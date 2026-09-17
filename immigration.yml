@@ -1,0 +1,44 @@
+name: 抓取移民署人次
+
+on:
+  schedule:
+    # 每小時的第 5 分鐘執行（cron 為 UTC，分鐘與台灣一致）
+    # 抓在整點後 5 分鐘，避開來源整點更新的瞬間
+    - cron: "5 * * * *"
+  workflow_dispatch:   # 允許在 Actions 頁面手動觸發，方便第一次測試
+
+# 讓 workflow 內建的 GITHUB_TOKEN 有權限 push 回 repo
+permissions:
+  contents: write
+
+concurrency:
+  group: immigration-fetch
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 抓取資料
+        run: node scripts/fetch-immigration.mjs
+
+      - name: 提交更新
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 只有在檔案真的有變動時才 commit，避免產生空提交
+          if [ -n "$(git status --porcelain data/immigration.json)" ]; then
+            git add data/immigration.json
+            git commit -m "chore: update immigration data ($(date -u +%Y-%m-%dT%H:%MZ))"
+            git push
+          else
+            echo "資料無變動，略過提交。"
+          fi

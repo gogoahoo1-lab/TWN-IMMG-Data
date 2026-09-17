@@ -1,0 +1,12 @@
+{
+  "updatedAt": "1970-01-01T00:00:00.000Z",
+  "updatedAtTaipei": "尚未執行",
+  "source": "內政部移民署 opendata.immigration.gov.tw/APIS",
+  "note": "total 為近 3 小時 paxCnt 加總；level 依門檻分級（green/amber/red）。此為初始佔位檔，workflow 首次執行後會被覆蓋。",
+  "items": [
+    { "code": "TPE11", "airport": "TPE", "label": "桃園 T1 入境", "dir": "in",  "terminal": "T1", "total": null, "level": "unknown", "ok": false },
+    { "code": "TPE12", "airport": "TPE", "label": "桃園 T2 入境", "dir": "in",  "terminal": "T2", "total": null, "level": "unknown", "ok": false },
+    { "code": "TPE51", "airport": "TPE", "label": "桃園 T1 出境", "dir": "out", "terminal": "T1", "total": null, "level": "unknown", "ok": false },
+    { "code": "TPE52", "airport": "TPE", "label": "桃園 T2 出境", "dir": "out", "terminal": "T2", "total": null, "level": "unknown", "ok": false }
+  ]
+}
