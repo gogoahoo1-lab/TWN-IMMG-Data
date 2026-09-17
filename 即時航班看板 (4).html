@@ -1382,55 +1382,85 @@ function statusCell(f){
 }
 
 /* =========================================================
-   航廈人流壅擠橫幅
-   ─ 資料由 GitHub Actions 每小時抓移民署人次，提交回 repo，
-     透過 GitHub Pages 發布成固定 JSON 網址（同源/Pages，無 CORS）。
-   ─ 【設定】把 PAX_URL 改成你 repo 的 Pages 網址：
-       https://<你的帳號>.github.io/<repo名>/data/immigration.json
-     改這一行即可，其餘不用動。留空字串則不顯示橫幅。
+   航廈人流壅擠橫幅（前端直抓移民署 API）
+   ─ 直接向 opendata.immigration.gov.tw/APIS 抓 TPE11/12/51/52。
+   ─ 你的台灣 IP 打得通；此版測試瀏覽器 CORS 是否放行。
+     若 Console 出現 CORS / Failed to fetch，代表被跨網域擋，
+     橫幅會顯示提示，需改回後端代理方案。
+   ─ 壅擠門檻（近 3 小時總人次）：可自行調整 PAX_TH。
    ========================================================= */
-var PAX_URL = "";   /* ← 建好 repo + Pages 後填這裡 */
-var paxCache = { data:null, ts:0 };
-var PAX_TTL = 300000;   /* 5 分鐘快取；資料每小時才更新，不需頻繁抓 */
+var PAX_CODES = [
+  { code:"TPE11", label:"桃園 T1 入境" },
+  { code:"TPE12", label:"桃園 T2 入境" },
+  { code:"TPE51", label:"桃園 T1 出境" },
+  { code:"TPE52", label:"桃園 T2 出境" }
+];
+var PAX_API = "https://opendata.immigration.gov.tw/APIS/";
+var PAX_TH = { amber:3000, red:6000 };   /* 近3h人次分級門檻 */
+var paxCache = { items:null, ts:0 };
+var PAX_TTL = 300000;   /* 5 分鐘快取；資料每小時才更新 */
 
+function paxLevel(total){
+  if(total == null) return "unknown";
+  if(total >= PAX_TH.red) return "red";
+  if(total >= PAX_TH.amber) return "amber";
+  return "green";
+}
 function paxLevelText(lv){
   return lv === "green" ? "順暢" : lv === "amber" ? "中等" : lv === "red" ? "壅塞" : "無資料";
+}
+
+async function paxFetchOne(c){
+  try{
+    var r = await fetch(PAX_API + c.code, { headers:{ "Accept":"application/json" }, cache:"no-store" });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    var arr = await r.json();
+    var total = (Array.isArray(arr) ? arr : []).reduce(function(s,row){ return s + (Number(row.paxCnt)||0); }, 0);
+    return { code:c.code, label:c.label, total:total, level:paxLevel(total), ok:true };
+  }catch(e){
+    return { code:c.code, label:c.label, total:null, level:"unknown", ok:false, error:e.message };
+  }
 }
 
 async function fetchPax(){
   var el = $("paxBar");
   if(!el) return;
-  if(!PAX_URL){ el.innerHTML = ""; return; }   /* 未設定網址就不顯示 */
 
   /* 快取新鮮就直接用 */
-  if(paxCache.data && Date.now() - paxCache.ts < PAX_TTL){
-    renderPax(paxCache.data, null);
+  if(paxCache.items && Date.now() - paxCache.ts < PAX_TTL){
+    renderPax(paxCache.items, null);
     return;
   }
+
+  /* 四個代碼並行抓取 */
   try{
-    var r = await fetch(PAX_URL, { cache:"no-store" });
-    if(!r.ok) throw new Error("HTTP " + r.status);
-    var data = await r.json();
-    paxCache = { data:data, ts:Date.now() };
-    renderPax(data, null);
+    var items = await Promise.all(PAX_CODES.map(paxFetchOne));
+    /* 若全部失敗，多半是 CORS 或連線問題 */
+    if(items.every(function(it){ return !it.ok; })){
+      renderPax(null, (items[0] && items[0].error) || "全部載入失敗");
+      return;
+    }
+    paxCache = { items:items, ts:Date.now() };
+    renderPax(items, null);
   }catch(e){
     renderPax(null, e.message);
   }
 }
 
-function renderPax(data, errMsg){
+function renderPax(items, errMsg){
   var el = $("paxBar");
   if(!el) return;
 
   if(errMsg){
-    el.innerHTML = '<div class="pax-wrap"><span class="pax-meta" style="color:var(--bad)">⚠ 航廈人流載入失敗：' + esc(errMsg) + '</span></div>';
+    var isCors = /Failed to fetch|NetworkError|CORS/i.test(errMsg);
+    el.innerHTML = '<div class="pax-wrap"><span class="pax-meta" style="color:var(--bad)">⚠ 航廈人流載入失敗：' +
+      esc(errMsg) + (isCors ? '（可能為瀏覽器跨網域限制 CORS，此來源不允許前端直接讀取）' : '') +
+      '</span></div>';
     return;
   }
-  var items = (data && Array.isArray(data.items)) ? data.items : [];
-  if(!items.length){ el.innerHTML = ""; return; }
+  if(!items || !items.length){ el.innerHTML = ""; return; }
 
-  var when = data.updatedAtTaipei && data.updatedAtTaipei !== "尚未執行"
-    ? data.updatedAtTaipei : "尚未更新";
+  var when = new Date().toLocaleTimeString("zh-TW", { hour:"2-digit", minute:"2-digit" });
 
   var cells = items.map(function(it){
     var lv = it.level || "unknown";
