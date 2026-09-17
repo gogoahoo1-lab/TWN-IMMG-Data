@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>航廈人流 · 手動更新工具（本機私用）</title>
+<style>
+  :root{
+    --bg:#eef3f7; --panel:#fff; --txt:#1c2b36; --dim:#6b7b88;
+    --cyan:#3a8fa7; --border:#d7e0e8; --ok:#3a8f6f; --warn:#a06d10; --bad:#c44;
+    --green:#5bc4a0; --amber:#d09628;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans TC",system-ui,-apple-system,sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.6;padding:24px}
+  .wrap{max-width:720px;margin:0 auto}
+  h1{font-size:22px;font-weight:600;letter-spacing:-.4px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13.5px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;
+    padding:20px 22px;margin-bottom:16px;box-shadow:0 2px 16px rgba(0,40,80,.05)}
+  .card h2{font-size:15px;font-weight:600;margin:0 0 12px}
+  label{display:block;font-size:13px;color:var(--dim);margin-bottom:5px}
+  input[type=text],input[type=password]{width:100%;padding:9px 12px;border:1px solid var(--border);
+    border-radius:9px;font-size:14px;font-family:inherit;margin-bottom:12px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:180px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--txt);margin-bottom:12px}
+  button{border:0;border-radius:10px;padding:11px 20px;font-size:14.5px;font-weight:500;
+    font-family:inherit;cursor:pointer;transition:opacity .15s}
+  button:hover{opacity:.88}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--cyan);color:#fff}
+  .btn-ghost{background:transparent;color:var(--cyan);border:1px solid var(--border)}
+  .note{font-size:12.5px;color:var(--dim);margin-top:4px}
+  .warn-box{background:rgba(196,68,68,.08);border:1px solid rgba(196,68,68,.25);
+    border-radius:10px;padding:11px 14px;font-size:12.5px;color:var(--bad);margin-bottom:16px}
+  #log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+    background:#0d1a24;color:#c8d6e0;border-radius:10px;padding:12px 14px;margin-top:12px;
+    max-height:260px;overflow:auto;white-space:pre-wrap;line-height:1.5}
+  #log .ok{color:#5bc4a0}
+  #log .err{color:#ff8080}
+  #log .info{color:#7fb8d0}
+  .preview{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+  .pcell{display:flex;align-items:center;gap:8px;border:1px solid var(--border);
+    border-radius:10px;padding:8px 12px;min-width:150px}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dot.green{background:var(--green)}.dot.amber{background:var(--amber)}
+  .dot.red{background:var(--bad)}.dot.unknown{background:#b8c4ce}
+  .pinfo{display:flex;flex-direction:column;line-height:1.3}
+  .plbl{font-size:13px;font-weight:500}
+  .pstat{font-size:11.5px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛂 航廈人流 · 手動更新工具</h1>
+  <p class="sub">本工具用你的台灣 IP 抓取移民署人次，寫回 GitHub。<b>僅供本機私用，請勿上傳或公開。</b></p>
+
+  <div class="warn-box">
+    ⚠️ 這個檔案會用到你的 GitHub Token，等同於操作你 repo 的通行證。<b>請只保存在自己電腦、不要上傳到任何 repo 或雲端硬碟。</b>Token 只會存在你這台瀏覽器的 localStorage，不會外傳到移民署以外的任何地方。
+  </div>
+
+  <div class="card">
+    <h2>1. 設定</h2>
+    <div class="row">
+      <div>
+        <label>GitHub 帳號</label>
+        <input type="text" id="ghOwner" placeholder="gogoahoo1-lab">
+      </div>
+      <div>
+        <label>Repo 名稱</label>
+        <input type="text" id="ghRepo" placeholder="TWN-IMMG-Data">
+      </div>
+    </div>
+    <label>GitHub Personal Access Token</label>
+    <input type="password" id="ghToken" placeholder="github_pat_...（只存在本機）">
+    <div class="chk">
+      <input type="checkbox" id="remember" checked>
+      <label style="margin:0;color:var(--txt)">記住以上設定（存在本機瀏覽器）</label>
+    </div>
+    <div class="note">檔案路徑固定為 <code>data/immigration.json</code>、分支 <code>main</code>。如需修改，改本檔最上方 JS 常數即可。</div>
+  </div>
+
+  <div class="card">
+    <h2>2. 執行</h2>
+    <button class="btn-primary" id="btnRun">抓取並更新到 GitHub</button>
+    <button class="btn-ghost" id="btnFetchOnly">只抓取（不上傳，先預覽）</button>
+    <div class="preview" id="preview"></div>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ===== 可調整常數 ===== */
+var CODES = [
+  { code:"TPE11", label:"桃園 T1 入境" },
+  { code:"TPE12", label:"桃園 T2 入境" },
+  { code:"TPE51", label:"桃園 T1 出境" },
+  { code:"TPE52", label:"桃園 T2 出境" }
+];
+var IMM_API = "https://opendata.immigration.gov.tw/APIS/";
+var TH = { amber:3000, red:6000 };       /* 壅擠門檻（近3h人次）*/
+var FILE_PATH = "data/immigration.json"; /* 寫入的檔案路徑 */
+var BRANCH = "main";
+
+/* ===== 小工具 ===== */
+function $(id){ return document.getElementById(id); }
+function log(msg, cls){
+  var el = $("log");
+  var line = document.createElement("div");
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function levelOf(total){
+  if(total == null) return "unknown";
+  if(total >= TH.red) return "red";
+  if(total >= TH.amber) return "amber";
+  return "green";
+}
+function levelText(lv){
+  return lv==="green"?"順暢":lv==="amber"?"中等":lv==="red"?"壅塞":"無資料";
+}
+
+/* ===== 抓取移民署 ===== */
+async function fetchOne(c){
+  try{
+    var r = await fetch(IMM_API + c.code, { headers:{ "Accept":"application/json" }, cache:"no-store" });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    var arr = await r.json();
+    var total = (Array.isArray(arr)?arr:[]).reduce(function(s,row){ return s+(Number(row.paxCnt)||0); }, 0);
+    return { code:c.code, label:c.label, total:total, level:levelOf(total), ok:true };
+  }catch(e){
+    return { code:c.code, label:c.label, total:null, level:"unknown", ok:false, error:String(e.message||e) };
+  }
+}
+async function fetchAll(){
+  log("開始抓取移民署人次…", "info");
+  var items = [];
+  for(var i=0;i<CODES.length;i++){
+    var it = await fetchOne(CODES[i]);
+    items.push(it);
+    log("  " + it.code + " (" + it.label + ")：" + (it.ok ? it.total + " 人次 · " + levelText(it.level) : "失敗 " + it.error), it.ok ? "ok" : "err");
+  }
+  renderPreview(items);
+  var okN = items.filter(function(x){return x.ok;}).length;
+  log("抓取完成：" + okN + "/" + items.length + " 成功", okN? "ok":"err");
+  return items;
+}
+function renderPreview(items){
+  $("preview").innerHTML = items.map(function(it){
+    return '<div class="pcell"><span class="dot ' + it.level + '"></span>' +
+      '<span class="pinfo"><span class="plbl">' + it.label + '</span>' +
+      '<span class="pstat">' + (it.ok ? levelText(it.level) + " · " + it.total.toLocaleString() + " 人次" : "無資料") + '</span></span></div>';
+  }).join("");
+}
+
+/* ===== 寫回 GitHub（Contents API）===== */
+async function pushToGitHub(items){
+  var owner = $("ghOwner").value.trim();
+  var repo  = $("ghRepo").value.trim();
+  var token = $("ghToken").value.trim();
+  if(!owner || !repo || !token){ log("請先填 GitHub 帳號、Repo、Token。", "err"); return; }
+
+  var payload = {
+    updatedAt: new Date().toISOString(),
+    updatedAtTaipei: new Date().toLocaleString("zh-TW", { timeZone:"Asia/Taipei" }),
+    source: "內政部移民署 opendata.immigration.gov.tw/APIS（本機手動更新）",
+    note: "total 為近3小時 paxCnt 加總；level 依門檻分級",
+    items: items
+  };
+  var contentB64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2) + "\n")));
+
+  var apiBase = "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + FILE_PATH;
+  var headers = {
+    "Authorization": "Bearer " + token,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+
+  try{
+    /* 先取現有檔案的 sha（更新既有檔案需要）*/
+    var sha = null;
+    log("查詢現有檔案…", "info");
+    var getR = await fetch(apiBase + "?ref=" + BRANCH, { headers:headers, cache:"no-store" });
+    if(getR.ok){ var j = await getR.json(); sha = j.sha; log("  找到現有檔案，將更新。", "info"); }
+    else if(getR.status === 404){ log("  檔案不存在，將建立新檔。", "info"); }
+    else { throw new Error("查詢失敗 HTTP " + getR.status); }
+
+    /* PUT 寫入 */
+    log("寫入 GitHub…", "info");
+    var body = {
+      message: "chore: manual update immigration data (" + new Date().toISOString().slice(0,16) + "Z)",
+      content: contentB64,
+      branch: BRANCH
+    };
+    if(sha) body.sha = sha;
+
+    var putR = await fetch(apiBase, { method:"PUT", headers:headers, body:JSON.stringify(body) });
+    if(!putR.ok){
+      var errText = await putR.text();
+      throw new Error("HTTP " + putR.status + " — " + errText.slice(0,200));
+    }
+    log("✅ 已成功更新到 GitHub！稍等 1-2 分鐘 GitHub Pages 生效後，看板即可讀到最新資料。", "ok");
+  }catch(e){
+    log("❌ 寫入失敗：" + e.message, "err");
+    if(/401|Bad credentials/i.test(e.message)) log("  → Token 無效或已過期，請重新產生。", "err");
+    if(/403/i.test(e.message)) log("  → Token 權限不足，需要該 repo 的 Contents 讀寫權限。", "err");
+    if(/404/i.test(e.message)) log("  → 找不到 repo，請確認帳號與 repo 名稱正確。", "err");
+  }
+}
+
+/* ===== 設定記憶 ===== */
+function saveSettings(){
+  if(!$("remember").checked) return;
+  try{
+    localStorage.setItem("immOwner", $("ghOwner").value.trim());
+    localStorage.setItem("immRepo", $("ghRepo").value.trim());
+    localStorage.setItem("immToken", $("ghToken").value.trim());
+  }catch(e){}
+}
+function loadSettings(){
+  try{
+    $("ghOwner").value = localStorage.getItem("immOwner") || "";
+    $("ghRepo").value  = localStorage.getItem("immRepo") || "";
+    $("ghToken").value = localStorage.getItem("immToken") || "";
+    if(localStorage.getItem("immRemember") === "0") $("remember").checked = false;
+  }catch(e){}
+}
+
+/* ===== 綁定 ===== */
+$("btnFetchOnly").addEventListener("click", async function(){
+  $("log").innerHTML = "";
+  this.disabled = true; $("btnRun").disabled = true;
+  await fetchAll();
+  this.disabled = false; $("btnRun").disabled = false;
+});
+$("btnRun").addEventListener("click", async function(){
+  $("log").innerHTML = "";
+  this.disabled = true; $("btnFetchOnly").disabled = true;
+  saveSettings();
+  var items = await fetchAll();
+  if(items.some(function(x){return x.ok;})) await pushToGitHub(items);
+  else log("全部抓取失敗，未上傳。", "err");
+  this.disabled = false; $("btnFetchOnly").disabled = false;
+});
+["ghOwner","ghRepo","ghToken"].forEach(function(id){
+  $(id).addEventListener("change", saveSettings);
+});
+$("remember").addEventListener("change", function(){
+  try{
+    localStorage.setItem("immRemember", this.checked ? "1" : "0");
+    if(this.checked) saveSettings();
+    else { localStorage.removeItem("immOwner"); localStorage.removeItem("immRepo"); localStorage.removeItem("immToken"); }
+  }catch(e){}
+});
+loadSettings();
+</script>
+</body>
+</html>
