@@ -2660,14 +2660,28 @@ async function testSlack() {
 }
 
 async function sendToSlack(webhookUrl, message) {
-  // Use no-cors mode + form-encoded to bypass CORS entirely.
-  // Trade-off: can't read the response, but Slack accepts and shows message.
-  // If sending fails at network level, fetch will still throw.
-  await fetch(webhookUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: 'payload=' + encodeURIComponent(JSON.stringify(message)),
-  });
+  // Slack now supports CORS for browser calls with application/json.
+  // Try normal fetch first (allows reading response).
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+    const text = await res.text();
+    if (text.trim() !== 'ok') throw new Error(`Slack: ${text}`);
+    return { success: true };
+  } catch (corsErr) {
+    // CORS blocked → fallback to no-cors (fire and forget)
+    console.warn('CORS blocked, falling back to no-cors:', corsErr);
+    await fetch(webhookUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+    return { success: true, opaque: true };
+  }
 }
 
 // 主要對外的推播函式
