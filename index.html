@@ -2653,19 +2653,21 @@ async function testSlack() {
   });
   try {
     await sendToSlack(url, msg);
-    statusEl.innerHTML = '<span style="color:var(--avail);">✓ 測試訊息已送出，請到 Slack 頻道查看</span>';
+    statusEl.innerHTML = '<span style="color:var(--avail);">✓ 已送出 · 請到 Slack 頻道確認是否收到<br/><small style="color:var(--muted);">（瀏覽器無法讀取 Slack 回應，需人工確認）</small></span>';
   } catch(e) {
-    statusEl.innerHTML = `<span style="color:#C53E1D;">失敗：${e.message}（可能是 URL 錯或網路問題）</span>`;
+    statusEl.innerHTML = `<span style="color:#C53E1D;">網路失敗：${e.message}</span>`;
   }
 }
 
 async function sendToSlack(webhookUrl, message) {
-  // Use form-encoded to avoid CORS preflight (Slack accepts payload=<json>)
-  const res = await fetch(webhookUrl, {
+  // Use no-cors mode + form-encoded to bypass CORS entirely.
+  // Trade-off: can't read the response, but Slack accepts and shows message.
+  // If sending fails at network level, fetch will still throw.
+  await fetch(webhookUrl, {
     method: 'POST',
+    mode: 'no-cors',
     body: 'payload=' + encodeURIComponent(JSON.stringify(message)),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 // 主要對外的推播函式
