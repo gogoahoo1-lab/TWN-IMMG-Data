@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Galactic Lounge" />
+<meta name="theme-color" content="#0B1636" />
+<title>STARLUX Galactic Lounge · 貴賓室管理系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+
+<style>
+  :root {
+    --navy-900: #0B1636; --navy-800: #142248; --navy-700: #1E3060; --navy-500: #3A5285;
+    --gold: #C9A66B; --gold-light: #E4CB98; --cream: #F5F1E8; --cream-2: #FAF7F0; --paper: #FFFFFF;
+    --ink: #17203A; --ink-2: #4A5470; --muted: #8B93A8; --line: #E5E1D6;
+    --avail: #6BA688; --avail-bg: #E8F1EB;
+    --seated: #4A6FA5; --seated-bg: #E4EBF3;
+    --dirty: #E8A644; --dirty-bg: #FBEED7;
+    --cleaning: #C97C4A; --cleaning-bg: #F7E1D0;
+    --blocked: #98A0B5; --blocked-bg: #EEEFF3;
+    --shadow: 0 2px 8px rgba(11, 22, 54, 0.06), 0 1px 2px rgba(11, 22, 54, 0.04);
+    --shadow-lg: 0 8px 24px rgba(11, 22, 54, 0.1);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: 'Noto Sans TC', 'Inter', -apple-system, sans-serif; background: var(--cream); color: var(--ink); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+  button { font-family: inherit; }
+
+  /* ============ DESKTOP LAYOUT (default) ============ */
+  .app { display: grid; grid-template-columns: 72px 1fr; height: 100vh; overflow: hidden; }
+
+  .sidebar { background: var(--navy-900); display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 6px; }
+  .brand-mark { width: 40px; height: 40px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--gold), #A08048); border-radius: 10px; color: var(--navy-900); font-weight: 700; font-family: 'Inter'; font-size: 18px; letter-spacing: -0.5px; }
+  .nav-btn { width: 44px; height: 44px; border-radius: 12px; background: transparent; border: none; color: rgba(255,255,255,0.55); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; position: relative; transition: all 0.15s ease; }
+  .nav-btn:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .nav-btn.active { background: rgba(201, 166, 107, 0.15); color: var(--gold); }
+  .nav-btn.active::before { content: ""; position: absolute; left: -20px; top: 12px; bottom: 12px; width: 3px; background: var(--gold); border-radius: 0 2px 2px 0; }
+  .nav-btn .badge { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #E5674C; border: 2px solid var(--navy-900); }
+  .nav-btn .nav-label { display: none; }
+  .nav-spacer { flex: 1; }
+
+  .main { display: grid; grid-template-rows: 64px 1fr; overflow: hidden; }
+  .topbar { display: flex; align-items: center; padding: 0 20px; background: var(--paper); border-bottom: 1px solid var(--line); gap: 16px; }
+  .terminal-switch { display: flex; background: var(--cream); border-radius: 10px; padding: 3px; font-family: 'Inter'; font-weight: 600; }
+  .terminal-switch button { padding: 6px 16px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; color: var(--ink-2); }
+  .terminal-switch button.active { background: var(--navy-900); color: var(--gold); }
+  .top-title { font-family: 'Inter', 'Noto Sans TC'; font-weight: 500; font-size: 15px; letter-spacing: 0.2px; }
+  .top-title .sub { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .top-clock { font-family: 'JetBrains Mono'; font-size: 15px; color: var(--ink); letter-spacing: 0.5px; }
+  .top-clock .date { color: var(--muted); font-size: 12px; margin-right: 10px; }
+
+  .conn-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .conn-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .conn-pill.local { background: #F0F0F0; color: #6B7280; }
+  .conn-pill.local::before { background: #98A0B5; }
+  .conn-pill.connecting { background: var(--dirty-bg); color: #B57A24; }
+  .conn-pill.connecting::before { background: var(--dirty); animation: pulse 1s infinite; }
+  .conn-pill.connected { background: var(--avail-bg); color: #3E7A5D; }
+  .conn-pill.connected::before { background: var(--avail); animation: pulse 2s infinite; }
+  .conn-pill.error { background: #FFECEC; color: #C53E1D; }
+  .conn-pill.error::before { background: #E5674C; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .primary-btn { background: var(--navy-900); color: var(--gold); border: none; padding: 8px 14px; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .primary-btn:hover { background: var(--navy-800); }
+  .primary-btn.large { padding: 10px 18px; font-size: 14px; }
+
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--cream); cursor: pointer; }
+  .user-chip:hover { background: var(--gold-light); }
+  .user-chip .u-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--navy-700); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .user-chip .u-info { font-size: 12px; line-height: 1.2; }
+  .user-chip .u-info .u-name { font-weight: 600; }
+  .user-chip .u-info .u-role { color: var(--muted); font-size: 11px; }
+
+  .content { display: grid; grid-template-columns: 1fr 340px; overflow: hidden; }
+  .center-pane { overflow-y: auto; padding: 20px 24px; -webkit-overflow-scrolling: touch; }
+  .right-pane { border-left: 1px solid var(--line); background: var(--cream-2); display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--paper); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .stat-card .label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-card .value { font-family: 'Inter'; font-size: 26px; font-weight: 600; color: var(--ink); letter-spacing: -0.5px; }
+  .stat-card .value .unit { font-size: 13px; color: var(--muted); margin-left: 2px; font-weight: 400; }
+  .stat-card .delta { font-size: 11px; margin-top: 3px; color: var(--avail); font-family: 'Inter'; }
+  .stat-card .delta.down { color: var(--cleaning); }
+  .stat-card.accent { background: var(--navy-900); color: var(--gold-light); }
+  .stat-card.accent .label { color: rgba(255,255,255,0.5); }
+  .stat-card.accent .value { color: var(--gold); }
+  .stat-card .util-bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .stat-card .util-bar-fill { height: 100%; background: linear-gradient(90deg, var(--avail), var(--gold), var(--cleaning)); border-radius: 2px; }
+
+  .seat-map-wrap { background: var(--paper); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); position: relative; }
+  .seat-map-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .seat-map-header h2 { font-size: 16px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .seat-map-header h2::before { content: ""; width: 3px; height: 16px; background: var(--gold); border-radius: 2px; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  .zone-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+  .zone { background: var(--cream-2); border-radius: 10px; padding: 12px; border: 1px dashed var(--line); }
+  .zone-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .zone-title .count { font-family: 'Inter'; letter-spacing: 0; text-transform: none; }
+  .seat-grid { display: grid; gap: 6px; }
+  .zone-a .seat-grid { grid-template-columns: repeat(4, 1fr); }
+  .zone-b .seat-grid { grid-template-columns: repeat(3, 1fr); }
+  .zone-c .seat-grid { grid-template-columns: repeat(3, 1fr); }
+  .zone-d .seat-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .seat { aspect-ratio: 1.4 / 1; background: var(--avail-bg); border: 1.5px solid transparent; border-radius: 8px; cursor: pointer; padding: 6px 5px; display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: all 0.12s ease; overflow: hidden; }
+  .seat:active { transform: scale(0.98); }
+  .seat.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,166,107,0.2); }
+  .seat.avail { background: var(--avail-bg); } .seat.avail .seat-code { color: #3E7A5D; }
+  .seat.seated { background: var(--seated-bg); } .seat.seated .seat-code { color: var(--seated); }
+  .seat.dirty { background: var(--dirty-bg); } .seat.dirty .seat-code { color: #B57A24; }
+  .seat.cleaning { background: var(--cleaning-bg); } .seat.cleaning .seat-code { color: var(--cleaning); }
+
+  body.seat-select .seat:not(.avail) { opacity: 0.3; cursor: not-allowed; }
+  body.seat-select .seat.avail { animation: seatPulse 1.6s infinite; box-shadow: 0 0 0 2px var(--gold); cursor: pointer; }
+  @keyframes seatPulse {
+    0%, 100% { box-shadow: 0 0 0 2px var(--gold); }
+    50% { box-shadow: 0 0 0 6px rgba(201,166,107,0.3); }
+  }
+
+  .seat-code { font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 500; letter-spacing: 0.5px; }
+  .seat-info { font-size: 10px; color: var(--ink); line-height: 1.2; }
+  .seat-info .name { font-weight: 500; }
+  .seat-info .flight { font-family: 'JetBrains Mono'; opacity: 0.7; }
+  .seat-time-band { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+  .band-imminent { background: #E5674C; }
+  .band-soon { background: var(--gold); }
+  .band-later { background: var(--avail); }
+  .seat-icon { position: absolute; top: 4px; right: 5px; font-size: 10px; opacity: 0.5; }
+
+  .select-banner { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); background: var(--navy-900); color: #fff; padding: 12px 20px; border-radius: 999px; display: none; align-items: center; gap: 14px; box-shadow: var(--shadow-lg); z-index: 90; max-width: 90vw; }
+  .select-banner.active { display: flex; }
+  .select-banner .sb-icon { font-size: 18px; }
+  .select-banner .sb-name { font-weight: 600; }
+  .select-banner .sb-meta { font-family: 'JetBrains Mono'; font-size: 12px; color: rgba(255,255,255,0.7); }
+  .select-banner .sb-cancel { background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 4px 10px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 12px; }
+
+  .right-tabs { display: flex; padding: 12px 16px 0; gap: 4px; border-bottom: 1px solid var(--line); }
+  .right-tab { padding: 8px 12px; border: none; background: transparent; font-family: inherit; font-size: 13px; color: var(--muted); font-weight: 500; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; }
+  .right-tab.active { color: var(--navy-900); border-bottom-color: var(--gold); }
+  .right-tab .tab-count { background: var(--cream); color: var(--ink-2); font-size: 11px; padding: 1px 6px; border-radius: 999px; font-family: 'Inter'; }
+  .right-tab.active .tab-count { background: var(--gold); color: var(--navy-900); }
+  .queue-list { flex: 1; overflow-y: auto; padding: 12px 16px; -webkit-overflow-scrolling: touch; }
+  .queue-hour { font-family: 'JetBrains Mono'; font-size: 11px; color: var(--muted); padding: 12px 4px 6px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .queue-hour::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .queue-item { background: var(--paper); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; cursor: pointer; border: 1px solid transparent; }
+  .queue-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--navy-500)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; position: relative; }
+  .queue-avatar .status-dot { position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--cream-2); }
+  .status-dot.st-seated { background: var(--seated); }
+  .status-dot.st-imminent { background: #E5674C; }
+  .status-dot.st-departed { background: var(--muted); }
+  .queue-meta .name { font-size: 13px; font-weight: 500; }
+  .queue-meta .flight-line { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono'; margin-top: 2px; }
+  .queue-right { text-align: right; font-family: 'JetBrains Mono'; font-size: 12px; }
+  .queue-right .seat-label { color: var(--gold); font-weight: 600; }
+  .queue-right .std { color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+  .view { display: none; } .view.active { display: block; }
+
+  /* Chat */
+  .chat-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; height: calc(100vh - 84px - 40px); }
+  .chat-list, .chat-body { background: var(--paper); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+  .chat-list-header { padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .chat-list-header .presence { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .chat-list-item { padding: 12px 16px; display: flex; gap: 10px; align-items: center; cursor: pointer; border-left: 3px solid transparent; }
+  .chat-list-item.active { background: var(--cream-2); border-left-color: var(--gold); }
+  .chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--navy-700); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .chat-list-meta { min-width: 0; flex: 1; }
+  .chat-list-meta .name { font-size: 13px; font-weight: 500; }
+  .chat-list-meta .preview { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-header { padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; }
+  .chat-header .status { font-size: 11px; color: var(--avail); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+  .chat-header .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--avail); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 4px; background: var(--cream-2); -webkit-overflow-scrolling: touch; }
+  .msg-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+  .msg-group.me { align-items: flex-end; } .msg-group.them { align-items: flex-start; }
+  .msg-sender { font-size: 11px; color: var(--muted); margin-left: 4px; margin-bottom: 2px; }
+  .msg-group.me .msg-sender { margin-right: 4px; margin-left: 0; }
+  .msg { max-width: 75%; padding: 8px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; word-wrap: break-word; }
+  .msg .msg-time { font-size: 10px; margin-top: 3px; font-family: 'JetBrains Mono'; }
+  .msg.them { background: var(--paper); border-bottom-left-radius: 4px; } .msg.them .msg-time { color: var(--muted); }
+  .msg.me { background: var(--navy-900); color: #fff; border-bottom-right-radius: 4px; } .msg.me .msg-time { color: rgba(255,255,255,0.5); }
+  .msg.system { align-self: center; background: var(--dirty-bg); color: #7A5514; font-size: 11px; padding: 4px 10px; border-radius: 999px; font-weight: 500; margin: 8px 0; }
+  .chat-composer { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
+  .chat-composer input { flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: 999px; font-family: inherit; font-size: 14px; outline: none; }
+  .chat-composer input:focus { border-color: var(--gold); }
+  .chat-composer button { background: var(--navy-900); color: var(--gold); border: none; padding: 8px 16px; border-radius: 999px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; }
+  .quick-msgs { padding: 8px 16px; display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--line); overflow-x: auto; }
+  .quick-msg { padding: 4px 10px; background: var(--cream); border: none; border-radius: 999px; font-size: 11px; color: var(--ink-2); cursor: pointer; font-family: inherit; white-space: nowrap; }
+
+  /* Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(11, 22, 54, 0.5); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
+  .modal-backdrop.active { display: flex; }
+  .modal { background: var(--paper); border-radius: 16px; width: 480px; max-width: 92vw; max-height: 90vh; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; }
+  .modal-header { background: var(--navy-900); color: #fff; padding: 20px 24px; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0; }
+  .modal-close { background: rgba(255,255,255,0.1); color: #fff; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+  .modal-header .seat-code-lg { font-family: 'JetBrains Mono'; font-size: 28px; color: var(--gold); font-weight: 500; letter-spacing: 1px; }
+  .modal-header .zone-name { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+  .form-row { display: grid; grid-template-columns: 90px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .form-row label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .form-row input, .form-row select { padding: 10px; border: 1px solid var(--line); border-radius: 8px; font-family: inherit; font-size: 14px; outline: none; }
+  .form-row input:focus, .form-row select:focus { border-color: var(--gold); }
+  .modal-footer { padding: 14px 24px; display: flex; gap: 8px; background: var(--cream-2); border-top: 1px solid var(--line); flex-shrink: 0; padding-bottom: calc(14px + var(--safe-bottom)); }
+  .modal-footer button { flex: 1; padding: 12px; border-radius: 10px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 500; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+  .modal-footer button.primary { background: var(--navy-900); color: var(--gold); border-color: var(--navy-900); font-weight: 600; }
+  .modal-footer button.danger { background: #FFF3F0; color: #C53E1D; border-color: #F5CFC0; }
+
+  /* Intake wizard */
+  .intake-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .intake-method { padding: 16px 8px; background: var(--cream-2); border: 2px solid transparent; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .intake-method.active { background: var(--paper); border-color: var(--gold); }
+  .intake-method .icon { font-size: 24px; margin-bottom: 4px; }
+  .intake-method .title { font-size: 13px; font-weight: 600; }
+  .intake-method .sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .intake-section { display: none; }
+  .intake-section.active { display: block; }
+
+  .pax-card { background: linear-gradient(135deg, var(--navy-900), var(--navy-700)); color: #fff; border-radius: 12px; padding: 16px; margin-top: 12px; }
+  .pax-card .pax-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; gap: 8px; }
+  .pax-card .pax-name { font-size: 17px; font-weight: 600; word-break: break-word; }
+  .pax-card .pax-pnr { font-family: 'JetBrains Mono'; font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .pax-card .pax-class { background: var(--gold); color: var(--navy-900); padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+  .pax-card .pax-flight { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; padding: 14px 0; border-top: 1px dashed rgba(255,255,255,0.15); border-bottom: 1px dashed rgba(255,255,255,0.15); }
+  .pax-card .pax-flight .airport { text-align: center; }
+  .pax-card .pax-flight .airport .code { font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 600; color: var(--gold); }
+  .pax-card .pax-flight .airport .name { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .pax-card .pax-flight .plane { font-size: 22px; color: rgba(255,255,255,0.4); }
+  .pax-card .pax-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .pax-card .pax-meta .k { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
+  .pax-card .pax-meta .v { font-family: 'JetBrains Mono'; font-size: 14px; font-weight: 500; margin-top: 2px; }
+
+  #qr-reader { background: #000; border-radius: 12px; overflow: hidden; }
+  #qr-reader video { max-width: 100%; }
+  .qr-hint { text-align: center; padding: 20px 10px; font-size: 13px; color: var(--muted); }
+  .qr-hint .qr-icon { font-size: 40px; margin-bottom: 8px; }
+
+  .identity-hero { text-align: center; padding: 8px 0 16px; }
+  .identity-hero .h-logo { font-size: 36px; margin-bottom: 8px; }
+  .identity-hero h2 { font-size: 18px; font-weight: 600; }
+  .identity-hero p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+  /* Queue FAB (mobile only) */
+  .queue-fab { position: fixed; bottom: calc(80px + var(--safe-bottom)); right: 16px; width: 56px; height: 56px; border-radius: 50%; background: var(--navy-900); color: var(--gold); border: none; box-shadow: var(--shadow-lg); font-size: 22px; cursor: pointer; z-index: 50; display: none; align-items: center; justify-content: center; }
+  .queue-fab .fab-badge { position: absolute; top: 4px; right: 4px; background: #E5674C; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 999px; font-family: 'Inter'; font-weight: 600; }
+
+  /* ============================================================
+     TABLET (1024px and below): stack right pane, 2-col stats
+     ============================================================ */
+  @media (max-width: 1024px) {
+    .content { grid-template-columns: 1fr; }
+    .right-pane {
+      position: fixed; top: 0; right: 0; height: 100vh; width: min(360px, 90vw);
+      z-index: 80; border-left: 1px solid var(--line);
+      transform: translateX(100%); transition: transform 0.25s ease;
+      box-shadow: -8px 0 24px rgba(0,0,0,0.15);
+    }
+    body.queue-open .right-pane { transform: translateX(0); }
+    body.queue-open::before {
+      content: ""; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 70;
+    }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .zone-grid { grid-template-columns: 1fr; }
+    .queue-fab { display: flex; }
+    .chat-layout { grid-template-columns: 220px 1fr; }
+    .top-title { display: none; }
+  }
+
+  /* ============================================================
+     MOBILE (768px and below): bottom nav, compact topbar
+     ============================================================ */
+  @media (max-width: 768px) {
+    .app {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto;
+    }
+    .sidebar {
+      grid-row: 2; grid-column: 1;
+      flex-direction: row;
+      padding: 8px 8px calc(8px + var(--safe-bottom));
+      gap: 0;
+      justify-content: space-around;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .brand-mark { display: none; }
+    .nav-btn { width: 56px; height: 44px; border-radius: 10px; flex-direction: column; gap: 2px; font-size: 18px; }
+    .nav-btn.active::before { display: none; }
+    .nav-btn.active { background: rgba(201, 166, 107, 0.15); }
+    .nav-btn .nav-label { display: block; font-size: 9px; color: currentColor; letter-spacing: 0.5px; }
+    .nav-spacer { display: none; }
+    .main { grid-row: 1; grid-template-rows: auto 1fr; overflow: hidden; }
+
+    .topbar {
+      padding: 8px 10px;
+      gap: 8px;
+      height: auto;
+      min-height: 56px;
+      flex-wrap: wrap;
+    }
+    .terminal-switch button { padding: 5px 10px; font-size: 12px; }
+    .conn-pill { font-size: 10px; padding: 3px 8px; }
+    .conn-pill .pill-text { display: none; }
+    .conn-pill::after { content: attr(data-short); }
+    .primary-btn { padding: 8px 12px; font-size: 12px; margin-left: auto; }
+    .user-chip { padding: 4px; }
+    .user-chip .u-info { display: none; }
+    .top-clock { display: none; }
+
+    .center-pane { padding: 12px; }
+    .stats-row { gap: 8px; margin-bottom: 12px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-card .label { font-size: 10px; }
+    .stat-card .value { font-size: 20px; }
+    .stat-card .value .unit { font-size: 11px; }
+    .stat-card .delta { font-size: 10px; }
+
+    .seat-map-wrap { padding: 12px; }
+    .seat-map-header h2 { font-size: 14px; }
+    .legend { font-size: 10px; gap: 8px; }
+    .legend-dot { width: 8px; height: 8px; }
+
+    .zone { padding: 10px; }
+    .zone-a .seat-grid { grid-template-columns: repeat(4, 1fr); }
+    .zone-b .seat-grid { grid-template-columns: repeat(4, 1fr); }
+    .zone-c .seat-grid { grid-template-columns: repeat(3, 1fr); }
+    .zone-d .seat-grid { grid-template-columns: repeat(4, 1fr); }
+    .seat { padding: 4px 3px; }
+    .seat-code { font-size: 10px; }
+    .seat-info { font-size: 9px; }
+
+    .chat-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+      height: calc(100vh - 56px - 60px - var(--safe-bottom));
+      gap: 8px;
+    }
+    .chat-list {
+      max-height: 44px;
+      overflow-x: auto; overflow-y: hidden;
+      flex-direction: row;
+      padding: 0;
+    }
+    .chat-list-header { display: none; }
+    #channelListItems { display: flex; flex-direction: row; width: 100%; overflow-x: auto; padding: 6px; gap: 6px; }
+    .chat-list-item {
+      flex-direction: column; padding: 6px 10px;
+      border-left: none; border-bottom: 2px solid transparent;
+      border-radius: 8px;
+      min-width: 80px;
+    }
+    .chat-list-item.active { border-left: none; border-bottom-color: var(--gold); background: var(--cream); }
+    .chat-list-item .chat-avatar { width: 28px; height: 28px; font-size: 10px; }
+    .chat-list-meta .preview { display: none; }
+    .chat-list-meta .name { font-size: 11px; text-align: center; }
+
+    .chat-messages { padding: 12px; }
+    .msg { max-width: 85%; font-size: 14px; }
+    .quick-msgs { padding: 6px 12px; }
+
+    .modal { width: 100%; max-width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
+    .modal-header { padding: 16px 20px; padding-top: max(16px, env(safe-area-inset-top)); }
+    .modal-body { padding: 16px 20px; }
+    .modal-footer { padding: 12px 20px calc(12px + var(--safe-bottom)); }
+
+    .intake-methods { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .intake-method { padding: 12px 4px; }
+    .intake-method .icon { font-size: 20px; }
+    .intake-method .title { font-size: 12px; }
+    .intake-method .sub { display: none; }
+
+    .select-banner {
+      top: auto; bottom: calc(76px + var(--safe-bottom));
+      left: 10px; right: 10px; transform: none; max-width: none;
+      padding: 10px 14px; font-size: 12px;
+      border-radius: 12px;
+    }
+    .select-banner .sb-meta { font-size: 10px; }
+
+    .queue-fab { bottom: calc(76px + var(--safe-bottom)); right: 12px; width: 52px; height: 52px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand-mark">JX</div>
+    <button class="nav-btn active" data-view="lounge" title="貴賓室"><span>🪑</span><span class="nav-label">座位</span></button>
+    <button class="nav-btn" data-view="stats" title="統計"><span>📊</span><span class="nav-label">統計</span></button>
+    <button class="nav-btn" data-view="chat" title="聊天"><span>💬</span><span class="nav-label">聊天</span><span class="badge" id="chatBadge" style="display:none;"></span></button>
+    <button class="nav-btn" data-view="inventory" title="備品"><span>📦</span><span class="nav-label">備品</span></button>
+    <div class="nav-spacer"></div>
+    <button class="nav-btn" onclick="showIdentityModal()" title="設定"><span>⚙️</span><span class="nav-label">設定</span></button>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="terminal-switch">
+        <button class="active" data-terminal="T1">T1</button>
+        <button data-terminal="T2">T2</button>
+      </div>
+      <div class="top-title"><span class="sub" id="terminalSubtitle">桃園第一航廈 · 出境層</span></div>
+      <span class="conn-pill local" id="connPill" data-short="離線">本機模式</span>
+      <button class="primary-btn" onclick="openIntakeWizard()">＋ 新帶位</button>
+      <div class="user-chip" onclick="showIdentityModal()">
+        <div class="u-avatar" id="userAvatar">?</div>
+        <div class="u-info">
+          <div class="u-name" id="userName">未設定</div>
+          <div class="u-role" id="userRole">請點擊</div>
+        </div>
+      </div>
+      <div class="top-clock"><span class="date" id="dateStr">—</span><span id="clockStr">—</span></div>
+    </header>
+
+    <div class="content">
+      <div class="center-pane">
+        <section class="view active" id="view-lounge">
+          <div class="stats-row">
+            <div class="stat-card"><div class="label">目前使用</div><div class="value"><span id="statUsed">0</span> <span class="unit">/ <span id="statTotal">42</span></span></div><div class="util-bar"><div class="util-bar-fill" id="statBar" style="width:0%"></div></div></div>
+            <div class="stat-card"><div class="label">今日累計</div><div class="value"><span id="statToday">0</span> <span class="unit">人</span></div><div class="delta">↑ 12%</div></div>
+            <div class="stat-card"><div class="label">待清潔</div><div class="value"><span id="statDirty">0</span></div><div class="delta down">等候 4 分</div></div>
+            <div class="stat-card accent"><div class="label">30 分登機</div><div class="value"><span id="statImminent">0</span> <span class="unit" style="color:rgba(255,255,255,0.4)">組</span></div><div class="delta" style="color:var(--gold-light);">釋出 <span id="statRelease">0</span> 席</div></div>
+          </div>
+
+          <div class="seat-map-wrap">
+            <div class="seat-map-header">
+              <h2>座位圖</h2>
+              <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--avail-bg); border:1px solid var(--avail);"></div>空位</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--seated-bg); border:1px solid var(--seated);"></div>使用中</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--dirty-bg); border:1px solid var(--dirty);"></div>待清潔</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--cleaning-bg); border:1px solid var(--cleaning);"></div>清潔中</div>
+              </div>
+            </div>
+            <div class="zone-grid">
+              <div class="zone zone-a"><div class="zone-title"><span>A · 沙發休憩區</span><span class="count" id="countA"></span></div><div class="seat-grid" id="grid-A"></div></div>
+              <div class="zone zone-b"><div class="zone-title"><span>B · 用餐區</span><span class="count" id="countB"></span></div><div class="seat-grid" id="grid-B"></div></div>
+              <div class="zone zone-c"><div class="zone-title"><span>C · 商務工作區</span><span class="count" id="countC"></span></div><div class="seat-grid" id="grid-C"></div></div>
+              <div class="zone zone-d"><div class="zone-title"><span>D · 吧檯 & 淋浴間</span><span class="count" id="countD"></span></div><div class="seat-grid" id="grid-D"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-chat">
+          <div class="chat-layout">
+            <div class="chat-list">
+              <div class="chat-list-header"><span>頻道</span><span class="presence" id="channelListStatus">-</span></div>
+              <div id="channelListItems"></div>
+            </div>
+            <div class="chat-body">
+              <div class="chat-header">
+                <div class="chat-avatar" id="chatHeaderAvatar">-</div>
+                <div><div style="font-weight:600;" id="chatHeaderName">請選擇頻道</div><div class="status" id="chatHeaderStatus">-</div></div>
+              </div>
+              <div class="chat-messages" id="chatMessages"></div>
+              <div class="quick-msgs">
+                <button class="quick-msg">✅ 已收到</button>
+                <button class="quick-msg">🪑 已預留</button>
+                <button class="quick-msg">♿ 輪椅通道</button>
+                <button class="quick-msg">🍷 餐點準備</button>
+              </div>
+              <div class="chat-composer">
+                <input type="text" id="chatInput" placeholder="輸入訊息…" />
+                <button id="chatSend">傳送</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-stats"><div class="empty">統計分析（下一版做）</div></section>
+        <section class="view" id="view-inventory"><div class="empty">備品盤點（下一版做）</div></section>
+      </div>
+
+      <div class="right-pane" id="rightPane">
+        <div class="right-tabs">
+          <button class="right-tab active" data-qtab="upcoming">即將離開 <span class="tab-count" id="cntUpcoming">0</span></button>
+          <button class="right-tab" data-qtab="dirty">待清潔 <span class="tab-count" id="cntDirty">0</span></button>
+          <button class="right-tab" data-qtab="all">全部 <span class="tab-count" id="cntAll">0</span></button>
+        </div>
+        <div class="queue-list" id="queueList"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<button class="queue-fab" onclick="toggleQueue()" id="queueFab">
+  📋<span class="fab-badge" id="fabBadge" style="display:none;">0</span>
+</button>
+
+<div class="select-banner" id="selectBanner">
+  <span class="sb-icon">🪑</span>
+  <div><div class="sb-name" id="sbName">-</div><div class="sb-meta" id="sbMeta">-</div></div>
+  <button class="sb-cancel" onclick="cancelSelection()">取消</button>
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="seat-code-lg" id="modalSeat">—</div><div class="zone-name" id="modalZone">—</div></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="intakeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div style="font-size:16px; font-weight:600;">新帶位</div><div style="font-size:12px; color:rgba(255,255,255,0.6); margin-top:2px;">選擇取得旅客資訊的方式</div></div>
+      <button class="modal-close" onclick="closeIntake()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="intake-methods">
+        <div class="intake-method active" data-method="flight" onclick="switchIntakeMethod('flight')">
+          <div class="icon">🔍</div><div class="title">輸入航班</div><div class="sub">TDX 帶入 STD</div>
+        </div>
+        <div class="intake-method" data-method="scan" onclick="switchIntakeMethod('scan')">
+          <div class="icon">📱</div><div class="title">掃描登機證</div><div class="sub">QR / Barcode</div>
+        </div>
+        <div class="intake-method" data-method="manual" onclick="switchIntakeMethod('manual')">
+          <div class="icon">✏️</div><div class="title">手動輸入</div><div class="sub">臨時客人</div>
+        </div>
+      </div>
+
+      <div class="intake-section active" id="section-flight">
+        <div class="form-row"><label>旅客姓名</label><input type="text" id="flName" placeholder="例：陳大明"/></div>
+        <div class="form-row"><label>航班</label><input type="text" id="flFno" placeholder="JX121" autocomplete="off" oninput="onFnoInput()"/></div>
+        <div id="flightSearchResults" style="max-height:120px; overflow-y:auto; background:var(--cream-2); border-radius:8px; display:none;"></div>
+        <div class="form-row"><label>人數</label><input type="number" id="flParty" value="1" min="1" max="8"/></div>
+        <div class="form-row"><label>艙等</label><select id="flClass"><option value="ECN">經濟艙</option><option value="BUS">商務艙</option><option value="FST">頭等艙</option></select></div>
+        <div id="flPreview"></div>
+      </div>
+
+      <div class="intake-section" id="section-scan">
+        <div id="scanPrompt">
+          <div class="qr-hint"><div class="qr-icon">📱</div><div>將登機證的 QR / Barcode 對準相機</div><div style="margin-top:4px; font-size:11px;">支援 IATA BCBP 標準</div></div>
+          <button class="primary-btn large" style="width:100%;" onclick="startScanner()">🎥 啟動相機</button>
+        </div>
+        <div id="qr-reader" style="width:100%; display:none;"></div>
+        <div id="scanResult"></div>
+      </div>
+
+      <div class="intake-section" id="section-manual">
+        <div class="form-row"><label>姓名</label><input type="text" id="mnName" placeholder="姓名"/></div>
+        <div class="form-row"><label>備註</label><input type="text" id="mnNote" placeholder="例：VIP、輪椅、素食"/></div>
+        <div class="form-row"><label>人數</label><input type="number" id="mnParty" value="1" min="1" max="8"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeIntake()">取消</button>
+      <button class="primary" onclick="confirmIntake()">下一步 · 選座位</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="identityModal">
+  <div class="modal">
+    <div class="modal-body">
+      <div class="identity-hero">
+        <div class="h-logo">✈️</div>
+        <h2>歡迎使用 Galactic Lounge</h2>
+        <p>請設定你的身份</p>
+      </div>
+      <div class="form-row"><label>姓名</label><input type="text" id="idName" placeholder="例：陳大明"/></div>
+      <div class="form-row"><label>身份</label><select id="idRole">
+        <option value="櫃檯">劃位櫃檯</option><option value="帶位員">貴賓室帶位員</option>
+        <option value="清潔">清潔人員</option><option value="餐飲">餐飲組</option><option value="主管">值班主管</option>
+      </select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="primary" onclick="saveIdentity()">開始使用</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ⚙️ SUPABASE CONFIG
+   ============================================================ */
+const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'PASTE_YOUR_SUPABASE_ANON_KEY';
+const isConfigured = SUPABASE_URL && !SUPABASE_URL.includes('PASTE_') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('PASTE_');
+let supabase = null;
+if (isConfigured) supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+function loadIdentity() {
+  const s = localStorage.getItem('lounge_user');
+  if (s) { currentUser = JSON.parse(s); renderIdentity(); }
+  else showIdentityModal();
+}
+function showIdentityModal() {
+  document.getElementById('identityModal').classList.add('active');
+  if (currentUser) { document.getElementById('idName').value = currentUser.name; document.getElementById('idRole').value = currentUser.role; }
+}
+function saveIdentity() {
+  const name = document.getElementById('idName').value.trim();
+  const role = document.getElementById('idRole').value;
+  if (!name) { alert('請輸入姓名'); return; }
+  currentUser = { name, role };
+  localStorage.setItem('lounge_user', JSON.stringify(currentUser));
+  renderIdentity();
+  document.getElementById('identityModal').classList.remove('active');
+}
+function renderIdentity() {
+  if (!currentUser) return;
+  document.getElementById('userName').textContent = currentUser.name;
+  document.getElementById('userRole').textContent = currentUser.role;
+  document.getElementById('userAvatar').textContent = currentUser.name[0];
+}
+function setConnStatus(state, text, short) {
+  const p = document.getElementById('connPill');
+  p.className = 'conn-pill ' + state;
+  p.textContent = text;
+  if (short) p.setAttribute('data-short', short);
+}
+
+let seats = {}, flights = {};
+let currentTerminal = 'T1';
+let selectedSeat = null;
+let currentQTab = 'upcoming';
+const zones = { A: { label: 'A · 沙發休憩區', codes: [] }, B: { label: 'B · 用餐區', codes: [] }, C: { label: 'C · 商務工作區', codes: [] }, D: { label: 'D · 吧檯 & 淋浴間', codes: [] } };
+
+async function initData() {
+  if (!isConfigured) { setConnStatus('local', '本機模式', '離線'); loadLocalFallback(); return; }
+  setConnStatus('connecting', '連線中…', '⋯');
+  try {
+    await Promise.all([loadSeats(), loadFlights()]);
+    subscribeRealtime();
+    setConnStatus('connected', 'Realtime', '●');
+    initChat();
+  } catch (e) {
+    console.error(e);
+    setConnStatus('error', '連線失敗', '✕');
+    loadLocalFallback();
+  }
+}
+
+async function loadSeats() {
+  const { data, error } = await supabase.from('seats').select('*').eq('terminal', currentTerminal);
+  if (error) throw error;
+  seats = {}; Object.keys(zones).forEach(z => zones[z].codes = []);
+  data.forEach(row => {
+    seats[row.code] = row;
+    if (zones[row.zone]) zones[row.zone].codes.push(row.code);
+  });
+  Object.keys(zones).forEach(z => zones[z].codes.sort());
+  renderAll();
+}
+async function loadFlights() {
+  const { data, error } = await supabase.from('flights').select('*');
+  if (error) throw error;
+  flights = {};
+  data.forEach(f => flights[f.flight_no] = f);
+}
+
+let seatSub = null, flightSub = null;
+function subscribeRealtime() {
+  if (seatSub) supabase.removeChannel(seatSub);
+  seatSub = supabase.channel('rt-seats').on('postgres_changes', { event: '*', schema: 'public', table: 'seats' }, (payload) => {
+    const row = payload.new || payload.old;
+    if (!row || row.terminal !== currentTerminal) return;
+    if (payload.eventType === 'DELETE') delete seats[row.code];
+    else seats[row.code] = row;
+    renderAll();
+  }).subscribe();
+  if (flightSub) supabase.removeChannel(flightSub);
+  flightSub = supabase.channel('rt-flights').on('postgres_changes', { event: '*', schema: 'public', table: 'flights' }, (payload) => {
+    const f = payload.new; if (f) flights[f.flight_no] = f;
+  }).subscribe();
+}
+
+function loadLocalFallback() {
+  const codes = ['A-01','A-02','A-03','A-04','A-05','A-06','A-07','A-08','A-09','A-10','A-11','A-12',
+    'B-01','B-02','B-03','B-04','B-05','B-06','B-07','B-08','B-09','B-10','B-11','B-12',
+    'C-01','C-02','C-03','C-04','C-05','C-06','C-07','C-08','C-09',
+    'D-01','D-02','D-03','D-04','S-01','S-02','S-03','S-04'];
+  seats = {}; Object.keys(zones).forEach(z => zones[z].codes = []);
+  const mockFlights = [{flight_no:'JX121',destination:'HKG',destination_name:'香港',std:'09:55'},{flight_no:'JX801',destination:'HND',destination_name:'東京羽田',std:'11:30'}];
+  codes.forEach(c => {
+    const zk = c[0] === 'S' ? 'D' : c[0];
+    const r = Math.random();
+    seats[c] = { code: c, zone: zk, terminal: currentTerminal, status: r<0.4?'seated':(r<0.5?'dirty':'avail') };
+    if (seats[c].status === 'seated') {
+      const f = mockFlights[Math.floor(Math.random()*mockFlights.length)];
+      Object.assign(seats[c], { passenger_name: '示範旅客', flight_no: f.flight_no, destination: f.destination, destination_name: f.destination_name, std: f.std, party_size: 1, class: 'ECN' });
+    }
+    zones[zk].codes.push(c);
+  });
+  Object.keys(zones).forEach(z => zones[z].codes.sort());
+  flights = {}; mockFlights.forEach(f => flights[f.flight_no] = { ...f, terminal: 'T1' });
+  renderAll();
+}
+
+async function updateSeat(code, patch) {
+  patch = { ...patch, updated_at: new Date().toISOString(), updated_by: currentUser?.name || 'anon' };
+  if (isConfigured) {
+    const { error } = await supabase.from('seats').update(patch).eq('terminal', currentTerminal).eq('code', code);
+    if (error) alert('更新失敗：' + error.message);
+  } else { Object.assign(seats[code], patch); renderAll(); }
+}
+async function releaseSeat(code) { await updateSeat(code, { status: 'dirty', passenger_name: null, flight_no: null, destination: null, destination_name: null, std: null, party_size: null, class: null, vip: null, entry_time: null }); }
+async function markCleaning(code) { await updateSeat(code, { status: 'cleaning' }); }
+async function markAvail(code) { await updateSeat(code, { status: 'avail', passenger_name: null, flight_no: null, destination: null, destination_name: null, std: null, party_size: null, class: null, vip: null, entry_time: null }); }
+
+function stdToMin(s) { if (!s) return 9999; const [h,m] = s.split(':').map(Number); return h*60+m; }
+function nowMin() { const d = new Date(); return d.getHours()*60+d.getMinutes(); }
+function minsUntilSTD(s) { return stdToMin(s) - nowMin(); }
+function minsUntilDep(s) { return minsUntilSTD(s) - 30; }
+function timeBand(s) { const m = minsUntilSTD(s); if (m<30) return 'band-imminent'; if (m<60) return 'band-soon'; return 'band-later'; }
+
+function renderSeats() {
+  Object.entries(zones).forEach(([zk, z]) => {
+    const grid = document.getElementById(`grid-${zk}`); if (!grid) return;
+    grid.innerHTML = ''; let avail = 0;
+    z.codes.forEach(code => {
+      const s = seats[code]; if (!s) return;
+      if (s.status === 'avail') avail++;
+      const el = document.createElement('div');
+      el.className = `seat ${s.status}` + (selectedSeat===code?' selected':'');
+      const iconMap = { avail:'', seated:'●', dirty:'⚠', cleaning:'🧹' };
+      let inner = `<div class="seat-code">${code} <span class="seat-icon">${iconMap[s.status]||''}</span></div>`;
+      if (s.status === 'seated' && s.passenger_name) {
+        inner += `<div class="seat-info"><div class="name">${s.passenger_name}${s.vip?' ★':''}</div><div class="flight">${s.flight_no||''} ${s.std||''}</div></div>`;
+        if (s.std) inner += `<div class="seat-time-band ${timeBand(s.std)}"></div>`;
+      } else {
+        const t = { avail:'空位', dirty:'待清潔', cleaning:'清潔中' }[s.status] || '';
+        inner += `<div class="seat-info"><div style="color:var(--muted);font-size:9px;">${t}</div></div>`;
+      }
+      el.innerHTML = inner;
+      el.addEventListener('click', () => onSeatClick(code));
+      grid.appendChild(el);
+    });
+    const el = document.getElementById(`count${zk}`);
+    if (el) el.textContent = `${z.codes.length-avail}/${z.codes.length}`;
+  });
+}
+
+function renderStats() {
+  const total = Object.keys(seats).length; let used=0, dirty=0, imm=0;
+  Object.values(seats).forEach(s => {
+    if (s.status === 'seated') { used++; if (s.std && minsUntilSTD(s.std) < 30) imm++; }
+    if (s.status === 'dirty') dirty++;
+  });
+  document.getElementById('statUsed').textContent = used;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDirty').textContent = dirty;
+  document.getElementById('statImminent').textContent = imm;
+  document.getElementById('statRelease').textContent = imm;
+  document.getElementById('statBar').style.width = total ? ((used/total)*100).toFixed(0)+'%' : '0%';
+  const fabBadge = document.getElementById('fabBadge');
+  const alerts = imm + dirty;
+  if (alerts > 0) { fabBadge.style.display = 'block'; fabBadge.textContent = alerts; }
+  else fabBadge.style.display = 'none';
+}
+
+function renderQueue() {
+  const list = document.getElementById('queueList'); list.innerHTML = '';
+  const all = [];
+  Object.entries(seats).forEach(([code,s]) => {
+    if (s.status==='seated' && s.passenger_name) all.push({ code, name: s.passenger_name, vip: s.vip, fno: s.flight_no, destName: s.destination_name, std: s.std, status: 'seated' });
+    else if (s.status==='dirty') all.push({ code, status: 'dirty', std: '—', name: '待清潔' });
+  });
+  let items = currentQTab==='upcoming' ? all.filter(x=>x.status==='seated').sort((a,b)=>stdToMin(a.std)-stdToMin(b.std))
+    : currentQTab==='dirty' ? all.filter(x=>x.status==='dirty') : all;
+  document.getElementById('cntUpcoming').textContent = all.filter(x=>x.status==='seated').length;
+  document.getElementById('cntDirty').textContent = all.filter(x=>x.status==='dirty').length;
+  document.getElementById('cntAll').textContent = all.length;
+  if (items.length===0) { list.innerHTML = '<div class="empty">目前沒有項目</div>'; return; }
+  let lastHour = -1;
+  items.forEach(item => {
+    if (currentQTab==='upcoming' && item.std && item.std !== '—') {
+      const h = Math.floor(stdToMin(item.std)/60);
+      if (h !== lastHour) { const hdr = document.createElement('div'); hdr.className='queue-hour'; hdr.textContent = `${String(h).padStart(2,'0')}:00`; list.appendChild(hdr); lastHour = h; }
+    }
+    const el = document.createElement('div'); el.className='queue-item';
+    const min = item.std && item.std!=='—' ? minsUntilSTD(item.std) : 0;
+    const statusClass = item.status==='dirty'?'st-departed':(min<30?'st-imminent':'st-seated');
+    const flightLine = item.fno ? `<span>${item.fno}</span> · <span>${item.destName||''}</span>` : `<span>座位釋出</span>`;
+    el.innerHTML = `<div class="queue-avatar">${item.name?item.name[0]:'?'}<span class="status-dot ${statusClass}"></span></div>
+      <div class="queue-meta"><div class="name">${item.name||'—'}${item.vip?' ★':''}</div><div class="flight-line">${flightLine}</div></div>
+      <div class="queue-right"><div class="seat-label">${item.code}</div><div class="std">${item.std!=='—'?item.std:''}</div></div>`;
+    el.addEventListener('click', () => { openSeatModal(item.code); if (window.innerWidth <= 1024) closeQueue(); });
+    list.appendChild(el);
+  });
+}
+
+let pendingIntake = null;
+function onSeatClick(code) {
+  const s = seats[code];
+  if (pendingIntake && s.status === 'avail') { assignSeatToPending(code); return; }
+  if (pendingIntake) return;
+  openSeatModal(code);
+}
+
+function openSeatModal(code) {
+  selectedSeat = code; renderSeats();
+  const s = seats[code]; if (!s) return;
+  const zn = zones[s.zone] ? zones[s.zone].label : '';
+  document.getElementById('modalSeat').textContent = code;
+  document.getElementById('modalZone').textContent = zn;
+  const body = document.getElementById('modalBody');
+  const footer = document.getElementById('modalFooter');
+  if (s.status === 'seated' && s.passenger_name) {
+    const min = s.std ? minsUntilSTD(s.std) : 0;
+    const minDep = s.std ? minsUntilDep(s.std) : 0;
+    body.innerHTML = `
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        <div style="width:44px; height:44px; border-radius:50%; background:var(--navy-700); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600;">${s.passenger_name[0]}</div>
+        <div><div style="font-size:16px; font-weight:600;">${s.passenger_name} ${s.vip?'★ VIP':''}</div><div style="font-size:12px; color:var(--muted);">${s.class==='FST'?'頭等艙':s.class==='BUS'?'商務艙':'經濟艙'} · ${s.party_size||1} 位</div></div>
+      </div>
+      <div class="form-row"><label>航班</label><div style="font-family:'JetBrains Mono'; font-weight:600;">${s.flight_no||'-'} → ${s.destination_name||''}</div></div>
+      <div class="form-row"><label>STD</label><div style="font-family:'JetBrains Mono';">${s.std||'-'} <span style="color:var(--muted); margin-left:8px;">(${min} 分後)</span></div></div>
+      <div class="form-row"><label>入場</label><div style="font-family:'JetBrains Mono';">${s.entry_time ? new Date(s.entry_time).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}) : '-'}</div></div>
+      <div class="form-row"><label>預估離開</label><div style="font-family:'JetBrains Mono'; color:${minDep<15?'#E5674C':'var(--ink)'}; font-weight:600;">${minDep>=0?minDep+' 分鐘後':'應已離開'}</div></div>`;
+    footer.innerHTML = `<button class="danger" onclick="releaseSeat('${code}').then(closeModal)">旅客已離開</button><button class="primary" onclick="closeModal()">關閉</button>`;
+  } else if (s.status === 'dirty') {
+    body.innerHTML = `<div style="text-align:center; padding:20px 0;"><div style="font-size:36px;">🧹</div><div style="font-size:15px; font-weight:600; margin-top:8px;">待清潔</div></div>`;
+    footer.innerHTML = `<button onclick="markCleaning('${code}').then(closeModal)">開始清潔</button><button class="primary" onclick="markAvail('${code}').then(closeModal)">完成 · 設為空位</button>`;
+  } else if (s.status === 'cleaning') {
+    body.innerHTML = `<div style="text-align:center; padding:20px 0;"><div style="font-size:36px;">✨</div><div style="font-size:15px; font-weight:600; margin-top:8px;">清潔中</div></div>`;
+    footer.innerHTML = `<button onclick="closeModal()">取消</button><button class="primary" onclick="markAvail('${code}').then(closeModal)">✓ 完成</button>`;
+  } else {
+    body.innerHTML = `<div style="text-align:center; padding:20px 0;"><div style="font-size:36px;">🪑</div><div style="font-size:13px; margin-top:8px; color:var(--muted);">空位 · 使用「＋ 新帶位」或快速入座：</div></div>
+      <div class="form-row"><label>姓名</label><input type="text" id="qName" placeholder="臨時客人"/></div>`;
+    footer.innerHTML = `<button onclick="closeModal()">取消</button><button class="primary" onclick="quickSeat('${code}')">快速入座</button>`;
+  }
+  document.getElementById('modal').classList.add('active');
+}
+function closeModal() { document.getElementById('modal').classList.remove('active'); selectedSeat=null; renderSeats(); }
+async function quickSeat(code) {
+  const name = document.getElementById('qName').value || '訪客';
+  await updateSeat(code, { status:'seated', passenger_name: name, entry_time: new Date().toISOString(), party_size:1, class:'ECN' });
+  closeModal();
+}
+
+/* Intake wizard */
+let intakeMethod = 'flight';
+function openIntakeWizard() {
+  if (!currentUser) { showIdentityModal(); return; }
+  switchIntakeMethod('flight');
+  document.getElementById('intakeModal').classList.add('active');
+  ['flName','flFno','mnName','mnNote'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('flPreview').innerHTML = '';
+  document.getElementById('scanResult').innerHTML = '';
+  document.getElementById('scanPrompt').style.display = 'block';
+  document.getElementById('qr-reader').style.display = 'none';
+}
+function closeIntake() { stopScanner(); document.getElementById('intakeModal').classList.remove('active'); }
+function switchIntakeMethod(m) {
+  intakeMethod = m;
+  document.querySelectorAll('.intake-method').forEach(el => el.classList.toggle('active', el.dataset.method === m));
+  document.querySelectorAll('.intake-section').forEach(el => el.classList.remove('active'));
+  document.getElementById(`section-${m}`).classList.add('active');
+  if (m !== 'scan') stopScanner();
+}
+
+function onFnoInput() {
+  const q = document.getElementById('flFno').value.trim().toUpperCase();
+  const results = document.getElementById('flightSearchResults');
+  const preview = document.getElementById('flPreview');
+  if (!q) { results.style.display='none'; preview.innerHTML=''; return; }
+  const matches = Object.values(flights).filter(f => f.flight_no.includes(q) || (f.destination_name||'').includes(q));
+  if (matches.length === 0) { results.style.display='none'; preview.innerHTML = `<div style="padding:8px; font-size:12px; color:var(--cleaning);">找不到航班 ${q}（TDX 尚未同步或無此班次）</div>`; return; }
+  results.innerHTML = matches.slice(0, 10).map(f => `
+    <div style="padding:10px 12px; cursor:pointer; display:grid; grid-template-columns:70px 1fr auto; gap:10px; font-family:'JetBrains Mono'; font-size:12px; align-items:center; border-bottom:1px solid var(--line);" onclick="pickFlight('${f.flight_no}')">
+      <span style="font-weight:600; color:var(--navy-900);">${f.flight_no}</span>
+      <span style="font-family:'Noto Sans TC';">${f.destination_name||''} (${f.destination||''})</span>
+      <span>STD ${f.std}</span>
+    </div>`).join('');
+  results.style.display = 'block';
+  const exact = matches.find(f => f.flight_no === q);
+  if (exact) pickFlight(exact.flight_no);
+}
+function pickFlight(fno) {
+  document.getElementById('flFno').value = fno;
+  document.getElementById('flightSearchResults').style.display = 'none';
+  const f = flights[fno]; if (!f) return;
+  document.getElementById('flPreview').innerHTML = renderPaxCard({
+    name: document.getElementById('flName').value || '（等待姓名）',
+    flight_no: f.flight_no, destination: f.destination, destination_name: f.destination_name,
+    std: f.std, class: document.getElementById('flClass').value, party_size: parseInt(document.getElementById('flParty').value) || 1,
+  });
+}
+function renderPaxCard(p) {
+  return `<div class="pax-card">
+    <div class="pax-top"><div><div class="pax-name">${p.name || '-'}</div>${p.pnr?'<div class="pax-pnr">PNR '+p.pnr+'</div>':''}</div><div class="pax-class">${p.class==='FST'?'FIRST':p.class==='BUS'?'BUSINESS':'ECONOMY'}</div></div>
+    <div class="pax-flight"><div class="airport"><div class="code">TPE</div><div class="name">桃園</div></div><div class="plane">✈</div><div class="airport"><div class="code">${p.destination||'-'}</div><div class="name">${p.destination_name||''}</div></div></div>
+    <div class="pax-meta"><div><div class="k">航班</div><div class="v">${p.flight_no||'-'}</div></div><div><div class="k">STD</div><div class="v">${p.std||'-'}</div></div><div><div class="k">人數</div><div class="v">${p.party_size||1} 位</div></div></div>
+  </div>`;
+}
+
+let scanner = null;
+async function startScanner() {
+  document.getElementById('scanPrompt').style.display = 'none';
+  document.getElementById('qr-reader').style.display = 'block';
+  try {
+    scanner = new Html5Qrcode('qr-reader');
+    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 160 } }, onScanned, () => {});
+  } catch (e) {
+    alert('無法啟動相機：' + e + '\n請確認相機權限並用 HTTPS');
+    document.getElementById('scanPrompt').style.display = 'block';
+    document.getElementById('qr-reader').style.display = 'none';
+  }
+}
+async function stopScanner() { if (scanner) { try { await scanner.stop(); scanner.clear(); } catch(e){} scanner = null; } }
+
+function onScanned(text) {
+  stopScanner();
+  document.getElementById('qr-reader').style.display = 'none';
+  const parsed = parseBCBP(text);
+  if (!parsed) {
+    document.getElementById('scanResult').innerHTML = `<div style="padding:12px; background:#FFECEC; color:#C53E1D; border-radius:8px; font-size:13px;"><strong>無法解析登機證</strong><br><span style="font-size:11px;">內容：${escapeHtml(text.substring(0, 80))}${text.length>80?'…':''}</span></div><button class="primary-btn large" style="width:100%; margin-top:12px;" onclick="startScanner()">🎥 重試</button>`;
+    return;
+  }
+  const flight = flights[parsed.flightNumber];
+  document.getElementById('scanResult').innerHTML = `
+    <div style="padding:8px 12px; background:var(--avail-bg); color:#3E7A5D; border-radius:8px; font-size:12px; margin-bottom:8px;">✅ 掃描成功 · PNR ${parsed.pnr} · 座位 ${parsed.seat}</div>
+    ${renderPaxCard({ name: parsed.name.replace('/',' '), pnr: parsed.pnr, flight_no: parsed.flightNumber, destination: parsed.to, destination_name: flight?flight.destination_name:parsed.to, std: flight?flight.std:'(未同步)', class: parsed.compartment === 'F'?'FST':(parsed.compartment==='C'||parsed.compartment==='J')?'BUS':'ECN', party_size: 1 })}
+    <button class="primary-btn large" style="width:100%; margin-top:12px;" onclick="startScanner()">🔁 重新掃描</button>`;
+  window._scannedPax = { name: parsed.name.replace('/',' '), pnr: parsed.pnr, flight_no: parsed.flightNumber, destination: parsed.to, destination_name: flight?flight.destination_name:parsed.to, std: flight?flight.std:null, class: parsed.compartment === 'F'?'FST':(parsed.compartment==='C'||parsed.compartment==='J')?'BUS':'ECN', party_size: 1 };
+}
+
+function parseBCBP(str) {
+  if (!str || str[0] !== 'M') return null;
+  try {
+    let p = 2;
+    const name = str.substr(p, 20).trim(); p += 20;
+    p += 1;
+    const pnr = str.substr(p, 7).trim(); p += 7;
+    const from = str.substr(p, 3); p += 3;
+    const to = str.substr(p, 3); p += 3;
+    const airline = str.substr(p, 3).trim(); p += 3;
+    const flightNumberRaw = str.substr(p, 5).trim(); p += 5;
+    p += 3;
+    const compartment = str[p]; p += 1;
+    const seat = str.substr(p, 4).trim(); p += 4;
+    const flightNumber = airline + (parseInt(flightNumberRaw, 10) || flightNumberRaw);
+    if (!name || !airline || !flightNumberRaw) return null;
+    return { name, pnr, from, to, airline, flightNumber, compartment, seat };
+  } catch (e) { return null; }
+}
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function confirmIntake() {
+  let pax = null;
+  if (intakeMethod === 'flight') {
+    const name = document.getElementById('flName').value.trim();
+    const fno = document.getElementById('flFno').value.trim().toUpperCase();
+    const f = flights[fno];
+    if (!name) { alert('請輸入姓名'); return; }
+    if (!f) { alert('請選擇有效航班'); return; }
+    pax = { name, flight_no: f.flight_no, destination: f.destination, destination_name: f.destination_name, std: f.std,
+            party_size: parseInt(document.getElementById('flParty').value)||1, class: document.getElementById('flClass').value, vip: false };
+  } else if (intakeMethod === 'scan') {
+    if (!window._scannedPax) { alert('請先掃描登機證'); return; }
+    pax = { ...window._scannedPax, vip: false };
+    if (!pax.std && flights[pax.flight_no]) pax.std = flights[pax.flight_no].std;
+    window._scannedPax = null;
+  } else {
+    const name = document.getElementById('mnName').value.trim();
+    const note = document.getElementById('mnNote').value.trim();
+    if (!name) { alert('請輸入姓名'); return; }
+    pax = { name, flight_no: null, destination: null, destination_name: null, std: null,
+            party_size: parseInt(document.getElementById('mnParty').value)||1, class: 'ECN', vip: /vip/i.test(note) };
+  }
+  pendingIntake = pax;
+  closeIntake();
+  enterSeatSelection();
+}
+function enterSeatSelection() {
+  document.body.classList.add('seat-select');
+  const banner = document.getElementById('selectBanner');
+  banner.classList.add('active');
+  document.getElementById('sbName').textContent = `為 ${pendingIntake.name} 帶位`;
+  document.getElementById('sbMeta').textContent = `${pendingIntake.flight_no || '手動'} · ${pendingIntake.std || '無班機'} · 點空位`;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.nav-btn[data-view="lounge"]').classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-lounge').classList.add('active');
+  closeQueue();
+}
+function cancelSelection() { pendingIntake = null; document.body.classList.remove('seat-select'); document.getElementById('selectBanner').classList.remove('active'); }
+async function assignSeatToPending(code) {
+  const p = pendingIntake;
+  await updateSeat(code, { status: 'seated', passenger_name: p.name, flight_no: p.flight_no, destination: p.destination, destination_name: p.destination_name, std: p.std, party_size: p.party_size, class: p.class, vip: !!p.vip, entry_time: new Date().toISOString() });
+  cancelSelection();
+}
+
+/* Queue toggle (mobile) */
+function toggleQueue() { document.body.classList.toggle('queue-open'); }
+function closeQueue() { document.body.classList.remove('queue-open'); }
+document.addEventListener('click', (e) => {
+  if (document.body.classList.contains('queue-open') && !e.target.closest('.right-pane') && !e.target.closest('.queue-fab')) {
+    closeQueue();
+  }
+});
+
+/* Nav / terminal / tabs */
+document.querySelectorAll('.nav-btn[data-view]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  if (btn.dataset.view === 'chat') document.getElementById('chatBadge').style.display = 'none';
+  closeQueue();
+}));
+document.querySelectorAll('[data-terminal]').forEach(b => b.addEventListener('click', async () => {
+  document.querySelectorAll('[data-terminal]').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  currentTerminal = b.dataset.terminal;
+  document.getElementById('terminalSubtitle').textContent = currentTerminal==='T1'?'桃園第一航廈':'桃園第二航廈';
+  cancelSelection();
+  if (isConfigured) { await loadSeats(); } else { loadLocalFallback(); }
+}));
+document.querySelectorAll('.right-tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.right-tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); currentQTab = t.dataset.qtab; renderQueue();
+}));
+
+/* Chat */
+let channels = [], currentChannelId = null, messagesByChannel = {}, channelSub = null;
+async function initChat() {
+  if (!isConfigured) { loadLocalChannels(); return; }
+  try {
+    const { data } = await supabase.from('channels').select('*').order('sort_order');
+    channels = data || []; renderChannelList();
+    if (channels.length) selectChannel(channels[0].id);
+    subChatMessages();
+  } catch(e){ console.error(e); loadLocalChannels(); }
+}
+function loadLocalChannels() {
+  channels = [{id:'lc1', name:'T1 劃位櫃檯', icon:'櫃', color:'#B57A24'}, {id:'lc2', name:'清潔組', icon:'清', color:'#6BA688'}];
+  messagesByChannel = { lc1: [{sender_name:'系統', content:'本機模式', created_at: new Date().toISOString()}] };
+  renderChannelList(); selectChannel('lc1');
+}
+function renderChannelList() {
+  const c = document.getElementById('channelListItems');
+  document.getElementById('channelListStatus').textContent = channels.length + ' 頻道';
+  c.innerHTML = channels.map(ch => `<div class="chat-list-item ${ch.id === currentChannelId ? 'active' : ''}" onclick="selectChannel('${ch.id}')"><div class="chat-avatar" style="background:${ch.color || 'var(--navy-700)'};">${ch.icon || ch.name[0]}</div><div class="chat-list-meta"><div class="name">${ch.name}</div><div class="preview">${(messagesByChannel[ch.id] && messagesByChannel[ch.id].slice(-1)[0]?.content) || '尚無訊息'}</div></div></div>`).join('');
+}
+async function selectChannel(cid) {
+  currentChannelId = cid; renderChannelList();
+  const ch = channels.find(c=>c.id===cid); if (!ch) return;
+  document.getElementById('chatHeaderName').textContent = ch.name;
+  document.getElementById('chatHeaderAvatar').textContent = ch.icon || ch.name[0];
+  document.getElementById('chatHeaderAvatar').style.background = ch.color || 'var(--navy-700)';
+  document.getElementById('chatHeaderStatus').textContent = isConfigured?'Realtime':'本機';
+  if (isConfigured) {
+    const { data } = await supabase.from('messages').select('*').eq('channel_id', cid).order('created_at').limit(100);
+    if (data) messagesByChannel[cid] = data;
+  }
+  renderMessages();
+}
+function subChatMessages() {
+  if (channelSub) supabase.removeChannel(channelSub);
+  channelSub = supabase.channel('rt-messages').on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, (payload) => {
+    const m = payload.new;
+    if (!messagesByChannel[m.channel_id]) messagesByChannel[m.channel_id] = [];
+    messagesByChannel[m.channel_id].push(m);
+    if (m.channel_id === currentChannelId) renderMessages();
+    else document.getElementById('chatBadge').style.display = 'block';
+    renderChannelList();
+  }).subscribe();
+}
+function renderMessages() {
+  const c = document.getElementById('chatMessages');
+  const msgs = messagesByChannel[currentChannelId] || [];
+  if (msgs.length===0) { c.innerHTML = '<div class="empty">尚無訊息</div>'; return; }
+  let html = ''; let lastSender = null; let group = [];
+  msgs.forEach(m => { if (m.sender_name !== lastSender) { if (group.length) html += renderGroup(group); group = []; lastSender = m.sender_name; } group.push(m); });
+  if (group.length) html += renderGroup(group);
+  c.innerHTML = html; c.scrollTop = c.scrollHeight;
+}
+function renderGroup(g) {
+  const isMe = currentUser && g[0].sender_name === currentUser.name;
+  const senderLbl = isMe?'':`<div class="msg-sender">${g[0].sender_name} · ${g[0].sender_role||''}</div>`;
+  const bubbles = g.map(m => { const d = new Date(m.created_at); return `<div class="msg ${isMe?'me':'them'}">${escapeHtml(m.content)}<div class="msg-time">${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</div></div>`; }).join('');
+  return `<div class="msg-group ${isMe?'me':'them'}">${senderLbl}${bubbles}</div>`;
+}
+async function sendMsg() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim(); if (!text || !currentChannelId || !currentUser) return;
+  inp.value = '';
+  if (isConfigured) await supabase.from('messages').insert({ channel_id: currentChannelId, sender_name: currentUser.name, sender_role: currentUser.role, content: text });
+  else { if (!messagesByChannel[currentChannelId]) messagesByChannel[currentChannelId] = []; messagesByChannel[currentChannelId].push({ sender_name: currentUser.name, sender_role: currentUser.role, content: text, created_at: new Date().toISOString() }); renderMessages(); }
+}
+document.getElementById('chatSend').addEventListener('click', sendMsg);
+document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key==='Enter') sendMsg(); });
+document.querySelectorAll('.quick-msg').forEach(b => b.addEventListener('click', () => { document.getElementById('chatInput').value = b.textContent; sendMsg(); }));
+
+function updateClock() {
+  const d = new Date(); const days = ['日','一','二','三','四','五','六'];
+  document.getElementById('dateStr').textContent = `${d.getMonth()+1}/${d.getDate()} 星期${days[d.getDay()]}`;
+  document.getElementById('clockStr').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+function renderAll() { renderSeats(); renderStats(); renderQueue(); }
+
+setInterval(() => { renderSeats(); renderStats(); renderQueue(); }, 60000);
+setInterval(updateClock, 1000);
+
+loadIdentity();
+updateClock();
+initData();
+</script>
+</body>
+</html>
