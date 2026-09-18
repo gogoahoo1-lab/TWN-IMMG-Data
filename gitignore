@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Supabase local dev
+.branches
+.temp
+supabase/.branches
+supabase/.temp
+
+# Environment secrets (if you later split them out)
+.env
+.env.local
+config.local.js
+
+# Build output (if you add a bundler later)
+dist/
+build/
