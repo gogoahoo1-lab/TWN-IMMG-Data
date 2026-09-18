@@ -417,7 +417,7 @@
         <button data-terminal="T2">T2</button>
       </div>
       <div class="top-title"><span class="sub" id="terminalSubtitle">桃園第一航廈 · 出境層</span></div>
-      <span class="conn-pill local" id="connPill" data-short="離線">本機模式</span>
+      <span class="conn-pill local" id="connPill" data-short="設定" onclick="showIdentityModal()" style="cursor:pointer;">本機模式 · 點設定連線</span>
       <button class="primary-btn" onclick="openIntakeWizard()">＋ 新帶位</button>
       <div class="user-chip" onclick="showIdentityModal()">
         <div class="u-avatar" id="userAvatar">?</div>
@@ -541,7 +541,7 @@
       </div>
 
       <div class="intake-section active" id="section-flight">
-        <div class="form-row"><label>旅客姓名</label><input type="text" id="flName" placeholder="例：陳大明"/></div>
+        <div class="form-row"><label>旅客姓名</label><input type="text" id="flName" placeholder="選填，未填顯示「訪客」"/></div>
         <div class="form-row"><label>航班</label><input type="text" id="flFno" placeholder="JX121" autocomplete="off" oninput="onFnoInput()"/></div>
         <div id="flightSearchResults" style="max-height:120px; overflow-y:auto; background:var(--cream-2); border-radius:8px; display:none;"></div>
         <div class="form-row"><label>人數</label><input type="number" id="flParty" value="1" min="1" max="8"/></div>
@@ -559,7 +559,7 @@
       </div>
 
       <div class="intake-section" id="section-manual">
-        <div class="form-row"><label>姓名</label><input type="text" id="mnName" placeholder="姓名"/></div>
+        <div class="form-row"><label>姓名</label><input type="text" id="mnName" placeholder="選填，未填顯示「訪客」"/></div>
         <div class="form-row"><label>備註</label><input type="text" id="mnNote" placeholder="例：VIP、輪椅、素食"/></div>
         <div class="form-row"><label>人數</label><input type="number" id="mnParty" value="1" min="1" max="8"/></div>
       </div>
@@ -576,28 +576,46 @@
     <div class="modal-body">
       <div class="identity-hero">
         <div class="h-logo">✈️</div>
-        <h2>歡迎使用 Galactic Lounge</h2>
-        <p>請設定你的身份</p>
+        <h2>Galactic Lounge · 設定</h2>
+        <p>個人身份與資料同步</p>
+      </div>
+
+      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 8px 0 10px;">
+        個人身份
       </div>
       <div class="form-row"><label>姓名</label><input type="text" id="idName" placeholder="例：陳大明"/></div>
       <div class="form-row"><label>身份</label><select id="idRole">
         <option value="櫃檯">劃位櫃檯</option><option value="帶位員">貴賓室帶位員</option>
         <option value="清潔">清潔人員</option><option value="餐飲">餐飲組</option><option value="主管">值班主管</option>
       </select></div>
+
+      <div style="height: 1px; background: var(--line); margin: 20px 0 16px;"></div>
+
+      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;">
+        資料同步（Supabase）
+      </div>
+      <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5;">
+        未填則為<b>本機模式</b>，資料只存在本裝置。<br/>
+        憑證從 Supabase → Project Settings → API 取得。
+      </div>
+      <div class="form-row"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxx.supabase.co" autocomplete="off"/></div>
+      <div class="form-row"><label>Anon Key</label><input type="text" id="cfgKey" placeholder="sb_publishable_... 或 eyJ..." autocomplete="off"/></div>
+      <div id="cfgStatus" style="font-size: 11px; margin-top: 4px;"></div>
     </div>
     <div class="modal-footer">
-      <button class="primary" onclick="saveIdentity()">開始使用</button>
+      <button onclick="closeSettings()" id="cancelSettingsBtn" style="display:none;">取消</button>
+      <button class="primary" onclick="saveSettings()">儲存並套用</button>
     </div>
   </div>
 </div>
 
 <script>
 /* ============================================================
-   ⚙️ SUPABASE CONFIG
+   ⚙️ SUPABASE CONFIG — 從 localStorage 讀取（在 App 設定裡填入）
    ============================================================ */
-const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'PASTE_YOUR_SUPABASE_ANON_KEY';
-const isConfigured = SUPABASE_URL && !SUPABASE_URL.includes('PASTE_') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('PASTE_');
+let SUPABASE_URL = localStorage.getItem('supabase_url') || '';
+let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || '';
+let isConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
 if (isConfigured) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -610,16 +628,67 @@ function loadIdentity() {
 function showIdentityModal() {
   document.getElementById('identityModal').classList.add('active');
   if (currentUser) { document.getElementById('idName').value = currentUser.name; document.getElementById('idRole').value = currentUser.role; }
+  document.getElementById('cfgUrl').value = SUPABASE_URL;
+  document.getElementById('cfgKey').value = SUPABASE_ANON_KEY;
+  // Show 取消 button only if user is already set (i.e. not first time)
+  document.getElementById('cancelSettingsBtn').style.display = currentUser ? 'block' : 'none';
+  updateCfgStatus();
 }
-function saveIdentity() {
+function closeSettings() {
+  if (!currentUser) { alert('請先設定姓名和身份'); return; }
+  document.getElementById('identityModal').classList.remove('active');
+}
+function updateCfgStatus() {
+  const url = document.getElementById('cfgUrl').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  const el = document.getElementById('cfgStatus');
+  if (!url && !key) { el.innerHTML = '<span style="color:var(--muted);">未填入 · 儲存後為本機模式</span>'; }
+  else if (url && key) { el.innerHTML = '<span style="color:var(--avail);">✓ 已填入 · 儲存後嘗試連線</span>'; }
+  else { el.innerHTML = '<span style="color:var(--cleaning);">兩欄都要填才會連線</span>'; }
+}
+async function saveSettings() {
+  // 1. Identity
   const name = document.getElementById('idName').value.trim();
   const role = document.getElementById('idRole').value;
   if (!name) { alert('請輸入姓名'); return; }
   currentUser = { name, role };
   localStorage.setItem('lounge_user', JSON.stringify(currentUser));
   renderIdentity();
+
+  // 2. Supabase credentials
+  const newUrl = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
+  const newKey = document.getElementById('cfgKey').value.trim();
+  const changed = newUrl !== SUPABASE_URL || newKey !== SUPABASE_ANON_KEY;
+
+  if (newUrl && newKey) {
+    localStorage.setItem('supabase_url', newUrl);
+    localStorage.setItem('supabase_anon_key', newKey);
+    SUPABASE_URL = newUrl; SUPABASE_ANON_KEY = newKey; isConfigured = true;
+  } else if (!newUrl && !newKey) {
+    localStorage.removeItem('supabase_url');
+    localStorage.removeItem('supabase_anon_key');
+    SUPABASE_URL = ''; SUPABASE_ANON_KEY = ''; isConfigured = false;
+  } else {
+    alert('Project URL 和 Anon Key 兩欄都要填，或都留空'); return;
+  }
+
   document.getElementById('identityModal').classList.remove('active');
+
+  if (changed) {
+    // Tear down existing subscriptions
+    try {
+      if (sb) {
+        if (seatSub) { sb.removeChannel(seatSub); seatSub = null; }
+        if (flightSub) { sb.removeChannel(flightSub); flightSub = null; }
+        if (channelSub) { sb.removeChannel(channelSub); channelSub = null; }
+      }
+    } catch(e) { console.warn(e); }
+    sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+    await initData();
+  }
 }
+// Backward compatibility alias
+function saveIdentity() { saveSettings(); }
 function renderIdentity() {
   if (!currentUser) return;
   document.getElementById('userName').textContent = currentUser.name;
@@ -640,7 +709,7 @@ let currentQTab = 'upcoming';
 const zones = { A: { label: 'A · 沙發休憩區', codes: [] }, B: { label: 'B · 用餐區', codes: [] }, C: { label: 'C · 商務工作區', codes: [] }, D: { label: 'D · 吧檯 & 淋浴間', codes: [] } };
 
 async function initData() {
-  if (!isConfigured) { setConnStatus('local', '本機模式', '離線'); loadLocalFallback(); return; }
+  if (!isConfigured) { setConnStatus('local', '本機模式 · 點設定連線', '設定'); loadLocalFallback(); return; }
   setConnStatus('connecting', '連線中…', '⋯');
   try {
     await Promise.all([loadSeats(), loadFlights()]);
@@ -963,10 +1032,9 @@ function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 async function confirmIntake() {
   let pax = null;
   if (intakeMethod === 'flight') {
-    const name = document.getElementById('flName').value.trim();
+    const name = document.getElementById('flName').value.trim() || '訪客';
     const fno = document.getElementById('flFno').value.trim().toUpperCase();
     const f = flights[fno];
-    if (!name) { alert('請輸入姓名'); return; }
     if (!f) { alert('請選擇有效航班'); return; }
     pax = { name, flight_no: f.flight_no, destination: f.destination, destination_name: f.destination_name, std: f.std,
             party_size: parseInt(document.getElementById('flParty').value)||1, class: document.getElementById('flClass').value, vip: false };
@@ -976,9 +1044,8 @@ async function confirmIntake() {
     if (!pax.std && flights[pax.flight_no]) pax.std = flights[pax.flight_no].std;
     window._scannedPax = null;
   } else {
-    const name = document.getElementById('mnName').value.trim();
+    const name = document.getElementById('mnName').value.trim() || '訪客';
     const note = document.getElementById('mnNote').value.trim();
-    if (!name) { alert('請輸入姓名'); return; }
     pax = { name, flight_no: null, destination: null, destination_name: null, std: null,
             party_size: parseInt(document.getElementById('mnParty').value)||1, class: 'ECN', vip: /vip/i.test(note) };
   }
@@ -1116,6 +1183,12 @@ function renderAll() { renderSeats(); renderStats(); renderQueue(); }
 
 setInterval(() => { renderSeats(); renderStats(); renderQueue(); }, 60000);
 setInterval(updateClock, 1000);
+
+// Live-update cfg status hint as user types
+['cfgUrl', 'cfgKey'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateCfgStatus);
+});
 
 loadIdentity();
 updateClock();
