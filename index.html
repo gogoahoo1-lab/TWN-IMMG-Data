@@ -305,6 +305,41 @@
 
   ::-webkit-scrollbar-track { background: transparent; }
 
+  /* User list (admin panel) */
+  .user-list { display: flex; flex-direction: column; }
+  .user-row { display: grid; grid-template-columns: 42px 1fr 100px 100px auto; gap: 12px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .user-row:last-child { border-bottom: none; }
+  .user-row.inactive { opacity: 0.5; }
+  .user-row .u-avatar { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--navy-700), var(--navy-500)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
+  .user-row .u-avatar.admin { background: linear-gradient(135deg, var(--gold), #A08048); color: var(--navy-900); }
+  .user-row .u-meta .u-primary { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .user-row .u-meta .u-badge { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .user-row .u-meta .u-badge.admin { background: var(--gold); color: var(--navy-900); }
+  .user-row .u-meta .u-badge.inactive { background: #EEEFF3; color: var(--muted); }
+  .user-row .u-meta .u-badge.pwd { background: var(--dirty-bg); color: #7A5514; }
+  .user-row .u-meta .u-secondary { font-size: 12px; color: var(--muted); margin-top: 3px; font-family: 'JetBrains Mono'; }
+  .user-row .u-role { font-size: 13px; color: var(--ink-2); }
+  .user-row .u-last { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono'; text-align: right; }
+  .user-row .u-actions { display: flex; gap: 4px; }
+  .user-row .u-actions button { padding: 6px 10px; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; color: var(--ink-2); }
+  .user-row .u-actions button:hover { background: var(--cream-2); }
+  .user-row .u-actions button.danger { background: #FFF3F0; color: #C53E1D; border-color: #F5CFC0; }
+
+  #accBadge .badge-admin { background: var(--gold); color: var(--navy-900); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+  #accBadge .badge-user { background: var(--seated-bg); color: var(--seated); padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+
+  .slack-toggle { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; margin-bottom: 4px; background: var(--cream-2); border-radius: 8px; cursor: pointer; }
+  .slack-toggle input[type="checkbox"] { margin-top: 3px; }
+  .slack-toggle span { flex: 1; font-size: 12px; color: var(--ink); }
+  .slack-toggle span b { display: block; font-weight: 600; margin-bottom: 2px; }
+  .slack-toggle span small { display: block; color: var(--muted); font-size: 11px; }
+
+  @media (max-width: 768px) {
+    .user-row { grid-template-columns: 40px 1fr auto; gap: 10px; padding: 12px; }
+    .user-row .u-role, .user-row .u-last { display: none; }
+    .user-row .u-actions button { padding: 4px 8px; font-size: 10px; }
+  }
+
   /* Forecast view */
   .forecast-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
   .fc-terminal-card { background: var(--paper); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
@@ -539,6 +574,7 @@
     <button class="nav-btn" data-view="forecast" title="容量預估"><span>📈</span><span class="nav-label">預估</span></button>
     <button class="nav-btn" data-view="chat" title="聊天"><span>💬</span><span class="nav-label">聊天</span><span class="badge" id="chatBadge" style="display:none;"></span></button>
     <button class="nav-btn" data-view="inventory" title="備品"><span>📦</span><span class="nav-label">備品</span></button>
+    <button class="nav-btn" data-view="admin" title="使用者管理" id="navAdmin" style="display:none;"><span>👥</span><span class="nav-label">帳號</span></button>
     <div class="nav-spacer"></div>
     <button class="nav-btn" onclick="showIdentityModal()" title="設定"><span>⚙️</span><span class="nav-label">設定</span></button>
   </aside>
@@ -611,6 +647,7 @@
               </div>
               <div class="chat-composer">
                 <input type="text" id="chatInput" placeholder="輸入訊息…" />
+                <button id="chatBroadcast" onclick="broadcastToSlack()" title="廣播到 Slack" style="background: var(--gold); color: var(--navy-900); padding: 10px 12px; border: none; border-radius: 10px; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 13px;">📢</button>
                 <button id="chatSend">傳送</button>
               </div>
             </div>
@@ -663,6 +700,25 @@
           </div>
         </section>
         <section class="view" id="view-inventory"><div class="empty">備品盤點（下一版做）</div></section>
+
+        <!-- ADMIN: USER MANAGEMENT VIEW -->
+        <section class="view" id="view-admin">
+          <div class="stats-header">
+            <div>
+              <h2 style="font-size: 20px; font-weight: 600;">使用者管理</h2>
+              <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">建立、重設密碼、停用帳號</div>
+            </div>
+            <button class="primary-btn large" onclick="openCreateUserModal()">＋ 新增使用者</button>
+          </div>
+
+          <div style="background: var(--dirty-bg); color: #7A5514; padding: 10px 14px; border-radius: 10px; font-size: 12px; margin-bottom: 16px; line-height: 1.5;">
+            <b>密碼安全提醒：</b>密碼使用 bcrypt 單向雜湊儲存，管理員<b>無法查看</b>任何人的原始密碼，只能「重設」為新密碼。重設後使用者下次登入需再改回自己的。
+          </div>
+
+          <div class="chart-card" style="padding: 0;">
+            <div id="userList" class="user-list"></div>
+          </div>
+        </section>
 
         <!-- FORECAST VIEW -->
         <section class="view" id="view-forecast">
@@ -841,66 +897,403 @@
       <div class="identity-hero">
         <div class="h-logo">✈️</div>
         <h2>Galactic Lounge · 設定</h2>
-        <p>個人身份與資料同步</p>
+        <p>帳號與資料同步</p>
       </div>
 
       <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 8px 0 10px;">
-        個人身份
+        帳號資訊
       </div>
-      <div class="form-row"><label>姓名</label><input type="text" id="idName" placeholder="例：陳大明"/></div>
-      <div class="form-row"><label>身份</label><select id="idRole">
-        <option value="櫃檯">劃位櫃檯</option><option value="帶位員">貴賓室帶位員</option>
-        <option value="清潔">清潔人員</option><option value="餐飲">餐飲組</option><option value="主管">值班主管</option>
-      </select></div>
+      <div id="accountBox" style="background: var(--cream-2); border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="accAvatar" style="width:42px; height:42px; border-radius:50%; background:var(--navy-700); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:16px;">?</div>
+          <div style="flex:1;">
+            <div id="accName" style="font-weight:600; font-size:15px;">—</div>
+            <div id="accMeta" style="font-size:12px; color:var(--muted); margin-top:2px;">—</div>
+          </div>
+          <div id="accBadge"></div>
+        </div>
+      </div>
+      <div id="accountActions" style="display: flex; gap: 6px; margin-bottom: 16px;">
+        <button type="button" onclick="showChangePassword()" style="flex:1; padding:8px; border:1px solid var(--line); background:var(--paper); border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px;">🔑 更改密碼</button>
+        <button type="button" onclick="doLogout()" style="flex:1; padding:8px; border:1px solid #F5CFC0; background:#FFF3F0; color:#C53E1D; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px;">🚪 登出</button>
+      </div>
 
-      <div style="height: 1px; background: var(--line); margin: 20px 0 16px;"></div>
+      <div id="supabaseSection">
+        <div style="height: 1px; background: var(--line); margin: 0 0 16px;"></div>
 
-      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;">
-        資料同步（Supabase）
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;">
+          資料同步（Supabase）
+          <span style="color: var(--gold); font-weight: 700; margin-left: 6px;">👑 僅管理員</span>
+        </div>
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5;">
+          未填則為<b>本機模式</b>，資料只存在本裝置。<br/>
+          憑證從 Supabase → Project Settings → API 取得。
+        </div>
+
+        <div class="form-row">
+          <label>已儲存專案</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <select id="cfgProfile" onchange="onProfileSelect()" style="flex:1; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:13px; background:var(--paper); outline:none;">
+              <option value="">— 手動填入或選擇 —</option>
+            </select>
+            <button type="button" onclick="deleteCurrentProfile()" id="btnDelProfile" title="刪除此專案" style="display:none; padding:8px 10px; border:1px solid var(--line); background:#FFF3F0; color:#C53E1D; border-radius:8px; cursor:pointer; font-size:14px;">🗑️</button>
+          </div>
+        </div>
+
+        <div class="form-row"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxx.supabase.co" autocomplete="off"/></div>
+        <div class="form-row"><label>Anon Key</label><input type="text" id="cfgKey" placeholder="sb_publishable_... 或 eyJ..." autocomplete="off"/></div>
+
+        <div class="form-row">
+          <label>專案名稱</label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="cfgProfileName" placeholder="例：正式環境、測試環境" style="flex:1; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:13px; outline:none;" />
+            <button type="button" onclick="saveCurrentAsProfile()" style="padding:8px 12px; background:var(--gold); color:var(--navy-900); border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap;">💾 存為專案</button>
+          </div>
+        </div>
+        <div id="cfgStatus" style="font-size: 11px; margin-top: 4px;"></div>
       </div>
-      <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5;">
-        未填則為<b>本機模式</b>，資料只存在本裝置。<br/>
-        憑證從 Supabase → Project Settings → API 取得。
+
+      <div id="slackSection" style="margin-top: 20px;">
+        <div style="height: 1px; background: var(--line); margin: 0 0 16px;"></div>
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px;">
+          推播設定（Slack）
+          <span style="color: var(--gold); font-weight: 700; margin-left: 6px;">👑 僅管理員</span>
+        </div>
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.5;">
+          從 Slack 頻道 → 齒輪 → Integrations → Add Incoming Webhooks 取得 URL。<br/>
+          <b>URL 是機密</b>，一旦外洩他人可假你名義發訊息，勿分享。
+        </div>
+
+        <div class="form-row"><label>Webhook URL</label><input type="password" id="slackUrl" placeholder="https://hooks.slack.com/services/..." autocomplete="off"/></div>
+
+        <div style="font-size: 12px; color: var(--ink); font-weight: 600; margin: 12px 0 8px;">自動推播事件</div>
+        <label class="slack-toggle"><input type="checkbox" id="slackVip"/><span><b>⭐ VIP 旅客抵達</b><small>seated 為 VIP 時自動推播座位、航班</small></span></label>
+        <label class="slack-toggle"><input type="checkbox" id="slackCapacity"/><span><b>⚠️ 容量警示</b><small>空位 &lt; 10% 時推播（每 30 分節流）</small></span></label>
+        <label class="slack-toggle"><input type="checkbox" id="slackOverflow"/><span><b>📈 預估溢流</b><small>預估頁面偵測到即將滿載</small></span></label>
+        <label class="slack-toggle"><input type="checkbox" id="slackBroadcast"/><span><b>📢 手動廣播</b><small>允許聊天頁面的「廣播到 Slack」按鈕</small></span></label>
+
+        <div style="display: flex; gap: 6px; margin-top: 14px;">
+          <button type="button" onclick="testSlack()" style="flex:1; padding:8px; border:1px solid var(--line); background:var(--paper); border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px;">🔔 發送測試訊息</button>
+          <button type="button" onclick="saveSlackSettings()" style="flex:1; padding:8px; background:var(--gold); color:var(--navy-900); border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; font-weight:600;">💾 儲存推播設定</button>
+        </div>
+        <div id="slackStatus" style="font-size: 11px; margin-top: 6px;"></div>
       </div>
-      <div class="form-row"><label>Project URL</label><input type="text" id="cfgUrl" placeholder="https://xxx.supabase.co" autocomplete="off"/></div>
-      <div class="form-row"><label>Anon Key</label><input type="text" id="cfgKey" placeholder="sb_publishable_... 或 eyJ..." autocomplete="off"/></div>
-      <div id="cfgStatus" style="font-size: 11px; margin-top: 4px;"></div>
     </div>
     <div class="modal-footer">
-      <button onclick="closeSettings()" id="cancelSettingsBtn" style="display:none;">取消</button>
-      <button class="primary" onclick="saveSettings()">儲存並套用</button>
+      <button onclick="closeSettings()" id="cancelSettingsBtn">關閉</button>
+      <button class="primary" onclick="saveSettings()" id="saveSettingsBtn">套用 Supabase 設定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOGIN MODAL ============ -->
+<div class="modal-backdrop" id="loginModal">
+  <div class="modal" style="width: 400px;">
+    <div class="modal-body">
+      <div class="identity-hero">
+        <div class="h-logo">✈️</div>
+        <h2>Galactic Lounge</h2>
+        <p>請登入以使用系統</p>
+      </div>
+      <div id="loginError" style="display:none; background:#FFECEC; color:#C53E1D; padding:8px 12px; border-radius:8px; font-size:12px; margin-bottom:12px;"></div>
+      <div class="form-row"><label>帳號</label><input type="text" id="loginUsername" placeholder="username" autocomplete="username"/></div>
+      <div class="form-row"><label>密碼</label><input type="password" id="loginPassword" placeholder="password" autocomplete="current-password"/></div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.5;">
+        沒有帳號？請聯絡管理員建立。<br/>
+        首次使用預設 <code>admin</code> / <code>admin123</code>（登入後強制改）。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" onclick="openSupabaseFromLogin()" style="flex:0.6;">🔧 系統連線設定</button>
+      <button class="primary" onclick="doLogin()">登入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHANGE PASSWORD MODAL ============ -->
+<div class="modal-backdrop" id="pwdModal">
+  <div class="modal" style="width: 400px;">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:16px; font-weight:600;">更改密碼</div>
+        <div id="pwdSubtitle" style="font-size:12px; color:rgba(255,255,255,0.6); margin-top:2px;">請設定新密碼</div>
+      </div>
+      <button class="modal-close" onclick="closePwdModal()" id="pwdCloseBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="pwdError" style="display:none; background:#FFECEC; color:#C53E1D; padding:8px 12px; border-radius:8px; font-size:12px; margin-bottom:12px;"></div>
+      <div class="form-row"><label>目前密碼</label><input type="password" id="pwdOld" autocomplete="current-password"/></div>
+      <div class="form-row"><label>新密碼</label><input type="password" id="pwdNew" autocomplete="new-password"/></div>
+      <div class="form-row"><label>再輸一次</label><input type="password" id="pwdConfirm" autocomplete="new-password"/></div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 8px;">建議至少 6 個字元，混合英數。</div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closePwdModal()" id="pwdCancelBtn">取消</button>
+      <button class="primary" onclick="doChangePassword()">更改密碼</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN: USER MODAL (新增/編輯/重設) ============ -->
+<div class="modal-backdrop" id="userModal">
+  <div class="modal" style="width: 440px;">
+    <div class="modal-header">
+      <div>
+        <div style="font-size:16px; font-weight:600;" id="userModalTitle">新增使用者</div>
+        <div style="font-size:12px; color:rgba(255,255,255,0.6); margin-top:2px;" id="userModalSubtitle">建立新的登入帳號</div>
+      </div>
+      <button class="modal-close" onclick="closeUserModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="userModalError" style="display:none; background:#FFECEC; color:#C53E1D; padding:8px 12px; border-radius:8px; font-size:12px; margin-bottom:12px;"></div>
+      <div id="userModalResult" style="display:none; background:var(--avail-bg); color:#3E7A5D; padding:10px 12px; border-radius:8px; font-size:13px; margin-bottom:12px;"></div>
+      <div class="form-row"><label>帳號</label><input type="text" id="umUsername" autocomplete="off"/></div>
+      <div class="form-row"><label>顯示名稱</label><input type="text" id="umDisplayName" placeholder="例：陳大明"/></div>
+      <div class="form-row"><label>身份</label><select id="umRole">
+        <option value="櫃檯">劃位櫃檯</option><option value="帶位員" selected>貴賓室帶位員</option>
+        <option value="清潔">清潔人員</option><option value="餐飲">餐飲組</option><option value="主管">值班主管</option>
+      </select></div>
+      <div class="form-row"><label>初始密碼</label><input type="text" id="umPassword" placeholder="使用者登入後強制改" autocomplete="off"/></div>
+      <div class="form-row"><label></label><label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink);"><input type="checkbox" id="umIsAdmin"/> 管理員權限</label></div>
+      <div class="form-row" id="umActiveRow" style="display:none;"><label></label><label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink);"><input type="checkbox" id="umIsActive" checked/> 帳號啟用中</label></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeUserModal()">取消</button>
+      <button class="primary" onclick="submitUserModal()" id="userModalSubmit">建立</button>
     </div>
   </div>
 </div>
 
 <script>
 /* ============================================================
-   ⚙️ SUPABASE CONFIG — 從 localStorage 讀取（在 App 設定裡填入）
+   ⚙️ SUPABASE CONFIG
+   ============================================================
+   IT 部署時可在下方兩個 DEFAULT_ 常數填入 Supabase 憑證，
+   這樣一般使用者的裝置打開就直接連線，不用手動設定。
+   
+   Anon Key 是公開安全的（真正的權限管制在 Supabase 的 RLS 政策），
+   直接寫在這個 HTML 檔沒問題。
+   
+   如果留空，則會顯示「本機模式」，管理員需在登入畫面點
+   「🔧 系統連線設定」手動填入（會存在該裝置的 localStorage）。
    ============================================================ */
-let SUPABASE_URL = localStorage.getItem('supabase_url') || '';
-let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || '';
+const DEFAULT_SUPABASE_URL = '';       // 例：'https://xxxxx.supabase.co'
+const DEFAULT_SUPABASE_ANON_KEY = '';  // 例：'sb_publishable_...' 或 'eyJ...'
+
+// localStorage 有值就用 localStorage，否則用上面的預設值
+let SUPABASE_URL = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || DEFAULT_SUPABASE_ANON_KEY;
 let isConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 let sb = null;
 if (isConfigured) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
-function loadIdentity() {
-  const s = localStorage.getItem('lounge_user');
-  if (s) { currentUser = JSON.parse(s); renderIdentity(); }
-  else showIdentityModal();
+
+// Bootstrap: check for saved session, verify with Supabase, or show login
+async function bootstrapAuth() {
+  const savedSession = localStorage.getItem('lounge_session');
+  if (!savedSession) { showLoginModal(); return; }
+  const session = JSON.parse(savedSession);
+  if (!isConfigured) {
+    // Can't verify without Supabase. Fall through to login screen but pre-fill.
+    showLoginModal();
+    return;
+  }
+  try {
+    const { data, error } = await sb.rpc('verify_session', { p_token: session.session_token });
+    if (error || !data || data.length === 0) {
+      localStorage.removeItem('lounge_session');
+      showLoginModal();
+      return;
+    }
+    const u = data[0];
+    setCurrentUser({
+      id: u.user_id,
+      username: u.username,
+      display_name: u.display_name,
+      name: u.display_name,  // alias for backward compat
+      role: u.role,
+      is_admin: u.is_admin,
+      must_change_password: u.must_change_password,
+      session_token: session.session_token,
+    });
+    if (u.must_change_password) showChangePassword(true);
+  } catch (e) {
+    console.error(e);
+    showLoginModal();
+  }
 }
-function showIdentityModal() {
+
+function setCurrentUser(user) {
+  currentUser = user;
+  localStorage.setItem('lounge_session', JSON.stringify({
+    session_token: user.session_token, username: user.username,
+  }));
+  renderIdentity();
+  document.getElementById('navAdmin').style.display = user.is_admin ? 'flex' : 'none';
+  // Initialize data now that we're authenticated
+  initData();
+  loadSlackConfig();
+}
+
+function showLoginModal() {
+  document.getElementById('loginModal').classList.add('active');
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginUsername').focus();
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  if (!username || !password) {
+    errEl.textContent = '請填入帳號和密碼';
+    errEl.style.display = 'block'; return;
+  }
+  if (!isConfigured) {
+    errEl.textContent = '尚未設定 Supabase 連線，請先點「🔧 系統連線設定」';
+    errEl.style.display = 'block'; return;
+  }
+  try {
+    const { data, error } = await sb.rpc('login_user', { p_username: username, p_password: password });
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      errEl.textContent = '帳號或密碼錯誤，或帳號已停用';
+      errEl.style.display = 'block'; return;
+    }
+    const u = data[0];
+    setCurrentUser({
+      id: u.user_id,
+      username: u.username,
+      display_name: u.display_name,
+      name: u.display_name,
+      role: u.role,
+      is_admin: u.is_admin,
+      must_change_password: u.must_change_password,
+      session_token: u.session_token,
+    });
+    document.getElementById('loginModal').classList.remove('active');
+    document.getElementById('loginPassword').value = '';
+    if (u.must_change_password) showChangePassword(true);
+  } catch (e) {
+    errEl.textContent = '登入失敗：' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function doLogout() {
+  if (!confirm('確定要登出？')) return;
+  if (isConfigured && currentUser?.session_token) {
+    try { await sb.rpc('logout_user', { p_token: currentUser.session_token }); } catch(e){}
+  }
+  localStorage.removeItem('lounge_session');
+  currentUser = null;
+  document.getElementById('identityModal').classList.remove('active');
+  document.getElementById('navAdmin').style.display = 'none';
+  showLoginModal();
+}
+
+function openSupabaseFromLogin() {
+  // Hide login modal so settings modal is visible on top
+  document.getElementById('loginModal').classList.remove('active');
   document.getElementById('identityModal').classList.add('active');
-  if (currentUser) { document.getElementById('idName').value = currentUser.name; document.getElementById('idRole').value = currentUser.role; }
   document.getElementById('cfgUrl').value = SUPABASE_URL;
   document.getElementById('cfgKey').value = SUPABASE_ANON_KEY;
-  // Show 取消 button only if user is already set (i.e. not first time)
-  document.getElementById('cancelSettingsBtn').style.display = currentUser ? 'block' : 'none';
+  // Force show Supabase section; hide Slack (need to log in first)
+  document.getElementById('supabaseSection').style.display = '';
+  document.getElementById('slackSection').style.display = 'none';
+  document.getElementById('saveSettingsBtn').style.display = '';
+  renderProfileDropdown();
   updateCfgStatus();
+  renderAccountBox();
+}
+
+/* Change Password */
+let pwdMustChange = false;
+function showChangePassword(mustChange = false) {
+  pwdMustChange = mustChange;
+  document.getElementById('pwdModal').classList.add('active');
+  document.getElementById('pwdOld').value = '';
+  document.getElementById('pwdNew').value = '';
+  document.getElementById('pwdConfirm').value = '';
+  document.getElementById('pwdError').style.display = 'none';
+  document.getElementById('pwdSubtitle').textContent = mustChange ? '首次登入或密碼已被重設，請設定新密碼' : '為安全起見，建議定期更換密碼';
+  document.getElementById('pwdCloseBtn').style.display = mustChange ? 'none' : 'block';
+  document.getElementById('pwdCancelBtn').style.display = mustChange ? 'none' : 'block';
+}
+function closePwdModal() {
+  if (pwdMustChange) return;
+  document.getElementById('pwdModal').classList.remove('active');
+}
+async function doChangePassword() {
+  const oldPwd = document.getElementById('pwdOld').value;
+  const newPwd = document.getElementById('pwdNew').value;
+  const confirmPwd = document.getElementById('pwdConfirm').value;
+  const errEl = document.getElementById('pwdError');
+  if (!oldPwd || !newPwd) { errEl.textContent = '請填入所有欄位'; errEl.style.display = 'block'; return; }
+  if (newPwd.length < 4) { errEl.textContent = '新密碼至少 4 個字元'; errEl.style.display = 'block'; return; }
+  if (newPwd !== confirmPwd) { errEl.textContent = '兩次新密碼不一致'; errEl.style.display = 'block'; return; }
+  try {
+    const { data, error } = await sb.rpc('change_own_password', {
+      p_token: currentUser.session_token, p_old_password: oldPwd, p_new_password: newPwd
+    });
+    if (error) throw error;
+    if (!data) { errEl.textContent = '目前密碼錯誤'; errEl.style.display = 'block'; return; }
+    currentUser.must_change_password = false;
+    pwdMustChange = false;
+    document.getElementById('pwdModal').classList.remove('active');
+    alert('密碼已更改');
+  } catch (e) {
+    errEl.textContent = '失敗：' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function showIdentityModal() {
+  if (!currentUser) { showLoginModal(); return; }
+  document.getElementById('identityModal').classList.add('active');
+  document.getElementById('cfgUrl').value = SUPABASE_URL;
+  document.getElementById('cfgKey').value = SUPABASE_ANON_KEY;
+  renderAccountBox();
+  // Only admins see the Supabase config + Slack push settings sections
+  const supaSection = document.getElementById('supabaseSection');
+  const slackSection = document.getElementById('slackSection');
+  const saveSupaBtn = document.getElementById('saveSettingsBtn');
+  if (currentUser.is_admin) {
+    supaSection.style.display = '';
+    slackSection.style.display = '';
+    saveSupaBtn.style.display = '';
+    renderProfileDropdown();
+    updateCfgStatus();
+    fillSlackForm();
+  } else {
+    supaSection.style.display = 'none';
+    slackSection.style.display = 'none';
+    saveSupaBtn.style.display = 'none';
+  }
+}
+function renderAccountBox() {
+  const actions = document.getElementById('accountActions');
+  if (!currentUser) {
+    document.getElementById('accName').textContent = '未登入';
+    document.getElementById('accMeta').textContent = '請先登入';
+    document.getElementById('accAvatar').textContent = '?';
+    document.getElementById('accBadge').innerHTML = '';
+    if (actions) actions.style.display = 'none';
+    return;
+  }
+  document.getElementById('accName').textContent = currentUser.display_name;
+  document.getElementById('accMeta').textContent = `${currentUser.username} · ${currentUser.role}`;
+  document.getElementById('accAvatar').textContent = currentUser.display_name[0];
+  document.getElementById('accBadge').innerHTML = currentUser.is_admin
+    ? '<span class="badge-admin">👑 管理員</span>'
+    : '<span class="badge-user">使用者</span>';
+  if (actions) actions.style.display = 'flex';
 }
 function closeSettings() {
-  if (!currentUser) { alert('請先設定姓名和身份'); return; }
   document.getElementById('identityModal').classList.remove('active');
+  // If we opened settings while unauthenticated (from login screen), stay on login
+  if (!currentUser) showLoginModal();
 }
 function updateCfgStatus() {
   const url = document.getElementById('cfgUrl').value.trim();
@@ -910,16 +1303,91 @@ function updateCfgStatus() {
   else if (url && key) { el.innerHTML = '<span style="color:var(--avail);">✓ 已填入 · 儲存後嘗試連線</span>'; }
   else { el.innerHTML = '<span style="color:var(--cleaning);">兩欄都要填才會連線</span>'; }
 }
-async function saveSettings() {
-  // 1. Identity
-  const name = document.getElementById('idName').value.trim();
-  const role = document.getElementById('idRole').value;
-  if (!name) { alert('請輸入姓名'); return; }
-  currentUser = { name, role };
-  localStorage.setItem('lounge_user', JSON.stringify(currentUser));
-  renderIdentity();
 
-  // 2. Supabase credentials
+/* ============================================================
+   SUPABASE PROFILES — 儲存多組憑證方便切換
+   ============================================================ */
+function getProfiles() {
+  try { return JSON.parse(localStorage.getItem('supabase_profiles') || '{}'); }
+  catch { return {}; }
+}
+function saveProfiles(profiles) {
+  localStorage.setItem('supabase_profiles', JSON.stringify(profiles));
+}
+function currentProfileName() {
+  // Find profile matching current URL+Key
+  const profiles = getProfiles();
+  const url = document.getElementById('cfgUrl').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('cfgKey').value.trim();
+  for (const [name, p] of Object.entries(profiles)) {
+    if (p.url === url && p.key === key) return name;
+  }
+  return '';
+}
+function renderProfileDropdown() {
+  const select = document.getElementById('cfgProfile');
+  const profiles = getProfiles();
+  const names = Object.keys(profiles).sort();
+  const currentName = currentProfileName();
+  select.innerHTML = '<option value="">— 手動填入或選擇 —</option>' +
+    names.map(n => `<option value="${escapeHtml(n)}" ${n === currentName ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
+  document.getElementById('btnDelProfile').style.display = currentName ? 'block' : 'none';
+  document.getElementById('cfgProfileName').value = currentName || '';
+}
+function onProfileSelect() {
+  const name = document.getElementById('cfgProfile').value;
+  if (!name) {
+    document.getElementById('btnDelProfile').style.display = 'none';
+    return;
+  }
+  const profiles = getProfiles();
+  const p = profiles[name];
+  if (!p) return;
+  document.getElementById('cfgUrl').value = p.url;
+  document.getElementById('cfgKey').value = p.key;
+  document.getElementById('cfgProfileName').value = name;
+  document.getElementById('btnDelProfile').style.display = 'block';
+  updateCfgStatus();
+}
+function saveCurrentAsProfile() {
+  const url = document.getElementById('cfgUrl').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('cfgKey').value.trim();
+  let name = document.getElementById('cfgProfileName').value.trim();
+  if (!url || !key) { alert('請先填入 Project URL 和 Anon Key'); return; }
+  if (!name) {
+    name = prompt('請幫這個專案取名（例：正式環境、測試環境）：');
+    if (!name) return;
+    name = name.trim();
+    if (!name) return;
+  }
+  const profiles = getProfiles();
+  if (profiles[name] && !(profiles[name].url === url && profiles[name].key === key)) {
+    if (!confirm(`「${name}」已存在，要覆蓋嗎？`)) return;
+  }
+  profiles[name] = { url, key };
+  saveProfiles(profiles);
+  renderProfileDropdown();
+  // Select the just-saved profile
+  document.getElementById('cfgProfile').value = name;
+  document.getElementById('btnDelProfile').style.display = 'block';
+  // Brief feedback
+  const status = document.getElementById('cfgStatus');
+  status.innerHTML = `<span style="color:var(--avail);">✓ 已儲存為「${escapeHtml(name)}」</span>`;
+  setTimeout(updateCfgStatus, 2000);
+}
+function deleteCurrentProfile() {
+  const name = document.getElementById('cfgProfile').value;
+  if (!name) return;
+  if (!confirm(`確定刪除「${name}」專案？（只刪本裝置紀錄，不影響 Supabase 資料）`)) return;
+  const profiles = getProfiles();
+  delete profiles[name];
+  saveProfiles(profiles);
+  renderProfileDropdown();
+  document.getElementById('cfgProfile').value = '';
+  document.getElementById('cfgProfileName').value = '';
+}
+async function saveSettings() {
+  // Supabase credentials only (identity is via login now)
   const newUrl = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
   const newKey = document.getElementById('cfgKey').value.trim();
   const changed = newUrl !== SUPABASE_URL || newKey !== SUPABASE_ANON_KEY;
@@ -939,7 +1407,6 @@ async function saveSettings() {
   document.getElementById('identityModal').classList.remove('active');
 
   if (changed) {
-    // Tear down existing subscriptions
     try {
       if (sb) {
         if (seatSub) { sb.removeChannel(seatSub); seatSub = null; }
@@ -948,14 +1415,14 @@ async function saveSettings() {
       }
     } catch(e) { console.warn(e); }
     sb = isConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-    await initData();
+    if (currentUser) { await initData(); }
+    else showLoginModal();
   }
 }
-// Backward compatibility alias
 function saveIdentity() { saveSettings(); }
 function renderIdentity() {
   if (!currentUser) return;
-  document.getElementById('userName').textContent = currentUser.name;
+  document.getElementById('userName').textContent = currentUser.display_name || currentUser.name;
   document.getElementById('userRole').textContent = currentUser.role;
   document.getElementById('userAvatar').textContent = currentUser.name[0];
 }
@@ -1159,6 +1626,14 @@ function renderStats() {
   const alerts = imm + dirty;
   if (alerts > 0) { fabBadge.style.display = 'block'; fabBadge.textContent = alerts; }
   else fabBadge.style.display = 'none';
+
+  // Slack: capacity warning (avail < 10% of total)
+  if (total > 0 && avail / total < 0.1) {
+    notifySlack('capacity_warn', {
+      message: `*${currentTerminal}* 貴賓室即將客滿\n剩餘空位：*${avail}/${total}* (${Math.round(avail/total*100)}%)\n使用中：${used} · 待清潔：${dirty}`,
+      terminal: currentTerminal,
+    });
+  }
 }
 
 function renderQueue() {
@@ -1391,6 +1866,13 @@ async function assignSeatToPending(code) {
   const p = pendingIntake;
   await updateSeat(code, { status: 'seated', passenger_name: p.name, flight_no: p.flight_no, destination: p.destination, destination_name: p.destination_name, std: p.std, party_size: p.party_size, class: p.class, vip: !!p.vip, entry_time: new Date().toISOString() });
   await logEntry(code, p);
+  // Slack push: VIP check-in
+  if (p.vip) {
+    const msg = `*${p.name}*${p.party_size > 1 ? ' 一行 ' + p.party_size + ' 位' : ''} 已入座 *${currentTerminal}-${code}*\n` +
+      `✈️ *${p.flight_no || '—'}* → ${p.destination_name || p.destination || '—'}\n` +
+      `🕒 STD ${p.std || '—'} · 艙等 ${p.class || '—'}`;
+    notifySlack('vip_checkin', { message: msg, terminal: currentTerminal, sender: currentUser?.display_name });
+  }
   cancelSelection();
 }
 
@@ -1412,6 +1894,7 @@ document.querySelectorAll('.nav-btn[data-view]').forEach(btn => btn.addEventList
   if (btn.dataset.view === 'chat') document.getElementById('chatBadge').style.display = 'none';
   if (btn.dataset.view === 'stats') loadStats();
   if (btn.dataset.view === 'forecast') loadForecast();
+  if (btn.dataset.view === 'admin') loadUsers();
   closeQueue();
 }));
 document.querySelectorAll('[data-terminal]').forEach(b => b.addEventListener('click', async () => {
@@ -1906,6 +2389,349 @@ document.querySelectorAll('[data-fcterm]').forEach(b => b.addEventListener('clic
   renderForecast();
 }));
 
+/* ============================================================
+   ADMIN: USER MANAGEMENT
+   ============================================================ */
+let userList = [];
+let userModalMode = 'create';  // 'create' | 'edit' | 'reset'
+let userModalTargetUsername = null;
+
+async function loadUsers() {
+  if (!currentUser?.is_admin || !isConfigured) {
+    document.getElementById('userList').innerHTML = '<div class="empty">需要管理員權限與 Supabase 連線</div>';
+    return;
+  }
+  try {
+    const { data, error } = await sb.rpc('admin_list_users', { p_token: currentUser.session_token });
+    if (error) throw error;
+    userList = data || [];
+    renderUserList();
+  } catch (e) {
+    document.getElementById('userList').innerHTML = `<div class="empty">載入失敗：${e.message}</div>`;
+  }
+}
+
+function renderUserList() {
+  const container = document.getElementById('userList');
+  if (userList.length === 0) { container.innerHTML = '<div class="empty">尚無使用者</div>'; return; }
+  container.innerHTML = userList.map(u => {
+    const last = u.last_login_at ? new Date(u.last_login_at).toLocaleString('zh-TW', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '從未登入';
+    const isSelf = u.username === currentUser.username;
+    return `<div class="user-row ${!u.is_active ? 'inactive' : ''}">
+      <div class="u-avatar ${u.is_admin ? 'admin' : ''}">${u.display_name[0]}</div>
+      <div class="u-meta">
+        <div class="u-primary">
+          ${escapeHtml(u.display_name)}
+          ${u.is_admin ? '<span class="u-badge admin">👑 管理員</span>' : ''}
+          ${!u.is_active ? '<span class="u-badge inactive">已停用</span>' : ''}
+          ${u.must_change_password ? '<span class="u-badge pwd">待改密碼</span>' : ''}
+          ${isSelf ? '<span style="font-size:11px; color:var(--muted);">（你）</span>' : ''}
+        </div>
+        <div class="u-secondary">@${u.username} · 建立於 ${new Date(u.created_at).toLocaleDateString('zh-TW')}</div>
+      </div>
+      <div class="u-role">${escapeHtml(u.role)}</div>
+      <div class="u-last">${last}</div>
+      <div class="u-actions">
+        <button onclick="openEditUserModal('${u.username}')">編輯</button>
+        <button onclick="openResetPasswordModal('${u.username}')">重設</button>
+        <button class="danger" onclick="deleteUser('${u.username}')" ${isSelf ? 'disabled title="不能刪除自己"' : ''}>刪除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCreateUserModal() {
+  userModalMode = 'create';
+  userModalTargetUsername = null;
+  document.getElementById('userModalTitle').textContent = '新增使用者';
+  document.getElementById('userModalSubtitle').textContent = '建立新的登入帳號';
+  document.getElementById('userModalSubmit').textContent = '建立';
+  document.getElementById('umUsername').value = '';
+  document.getElementById('umUsername').disabled = false;
+  document.getElementById('umDisplayName').value = '';
+  document.getElementById('umRole').value = '帶位員';
+  document.getElementById('umPassword').value = generateTempPassword();
+  document.getElementById('umPassword').style.display = '';
+  document.querySelector('label[for="umPassword"], .form-row:has(#umPassword) label').textContent = '初始密碼';
+  document.getElementById('umIsAdmin').checked = false;
+  document.getElementById('umActiveRow').style.display = 'none';
+  document.getElementById('userModalError').style.display = 'none';
+  document.getElementById('userModalResult').style.display = 'none';
+  document.getElementById('userModal').classList.add('active');
+}
+
+function openEditUserModal(username) {
+  const u = userList.find(x => x.username === username);
+  if (!u) return;
+  userModalMode = 'edit';
+  userModalTargetUsername = username;
+  document.getElementById('userModalTitle').textContent = '編輯 ' + username;
+  document.getElementById('userModalSubtitle').textContent = '修改角色、權限、啟用狀態';
+  document.getElementById('userModalSubmit').textContent = '儲存';
+  document.getElementById('umUsername').value = username;
+  document.getElementById('umUsername').disabled = true;
+  document.getElementById('umDisplayName').value = u.display_name;
+  document.getElementById('umRole').value = u.role;
+  document.getElementById('umPassword').style.display = 'none';
+  document.getElementById('umIsAdmin').checked = u.is_admin;
+  document.getElementById('umIsActive').checked = u.is_active;
+  document.getElementById('umActiveRow').style.display = '';
+  document.getElementById('userModalError').style.display = 'none';
+  document.getElementById('userModalResult').style.display = 'none';
+  document.getElementById('userModal').classList.add('active');
+}
+
+function openResetPasswordModal(username) {
+  const u = userList.find(x => x.username === username);
+  if (!u) return;
+  userModalMode = 'reset';
+  userModalTargetUsername = username;
+  document.getElementById('userModalTitle').textContent = '重設 ' + username + ' 的密碼';
+  document.getElementById('userModalSubtitle').textContent = '設定新的密碼後告知該使用者';
+  document.getElementById('userModalSubmit').textContent = '確認重設';
+  document.getElementById('umUsername').value = username;
+  document.getElementById('umUsername').disabled = true;
+  document.getElementById('umDisplayName').value = u.display_name;
+  document.getElementById('umDisplayName').disabled = true;
+  document.getElementById('umRole').value = u.role;
+  document.getElementById('umRole').disabled = true;
+  document.getElementById('umPassword').value = generateTempPassword();
+  document.getElementById('umPassword').style.display = '';
+  document.getElementById('umIsAdmin').disabled = true;
+  document.getElementById('umIsAdmin').checked = u.is_admin;
+  document.getElementById('umActiveRow').style.display = 'none';
+  document.getElementById('userModalError').style.display = 'none';
+  document.getElementById('userModalResult').style.display = 'none';
+  document.getElementById('userModal').classList.add('active');
+}
+
+function closeUserModal() {
+  document.getElementById('userModal').classList.remove('active');
+  // Reset disabled states
+  document.getElementById('umUsername').disabled = false;
+  document.getElementById('umDisplayName').disabled = false;
+  document.getElementById('umRole').disabled = false;
+  document.getElementById('umIsAdmin').disabled = false;
+}
+
+async function submitUserModal() {
+  const errEl = document.getElementById('userModalError');
+  const resultEl = document.getElementById('userModalResult');
+  errEl.style.display = 'none';
+  resultEl.style.display = 'none';
+  try {
+    if (userModalMode === 'create') {
+      const username = document.getElementById('umUsername').value.trim();
+      const displayName = document.getElementById('umDisplayName').value.trim();
+      const role = document.getElementById('umRole').value;
+      const password = document.getElementById('umPassword').value;
+      const isAdmin = document.getElementById('umIsAdmin').checked;
+      if (!username || !displayName || !password) throw new Error('帳號、顯示名稱、初始密碼必填');
+      const { data, error } = await sb.rpc('admin_create_user', {
+        p_token: currentUser.session_token,
+        p_username: username, p_password: password, p_display_name: displayName,
+        p_role: role, p_is_admin: isAdmin,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('建立失敗（可能帳號已存在）');
+      resultEl.innerHTML = `✅ 已建立 <b>${escapeHtml(username)}</b><br/>初始密碼：<code style="background:var(--paper); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono';">${escapeHtml(password)}</code><br/>請告知該使用者，他登入後會被要求改密碼。`;
+      resultEl.style.display = 'block';
+      await loadUsers();
+      // Don't close modal so admin can copy the password
+    } else if (userModalMode === 'edit') {
+      const displayName = document.getElementById('umDisplayName').value.trim();
+      const role = document.getElementById('umRole').value;
+      const isAdmin = document.getElementById('umIsAdmin').checked;
+      const isActive = document.getElementById('umIsActive').checked;
+      const { data, error } = await sb.rpc('admin_update_user', {
+        p_token: currentUser.session_token,
+        p_target_username: userModalTargetUsername,
+        p_display_name: displayName, p_role: role, p_is_admin: isAdmin, p_is_active: isActive,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('更新失敗');
+      await loadUsers();
+      closeUserModal();
+    } else if (userModalMode === 'reset') {
+      const password = document.getElementById('umPassword').value;
+      if (!password) throw new Error('請輸入新密碼');
+      const { data, error } = await sb.rpc('admin_reset_password', {
+        p_token: currentUser.session_token,
+        p_target_username: userModalTargetUsername,
+        p_new_password: password,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('重設失敗');
+      resultEl.innerHTML = `✅ 已重設 <b>${escapeHtml(userModalTargetUsername)}</b> 的密碼<br/>新密碼：<code style="background:var(--paper); padding:2px 6px; border-radius:4px; font-family:'JetBrains Mono';">${escapeHtml(password)}</code><br/>請告知該使用者，他下次登入會被要求改回自己的。`;
+      resultEl.style.display = 'block';
+      await loadUsers();
+    }
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function deleteUser(username) {
+  if (!confirm(`確定刪除 ${username}？此動作無法復原。`)) return;
+  try {
+    const { data, error } = await sb.rpc('admin_delete_user', {
+      p_token: currentUser.session_token, p_target_username: username,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('刪除失敗（無法刪除自己）');
+    await loadUsers();
+  } catch (e) { alert('刪除失敗：' + e.message); }
+}
+
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let s = ''; for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+// Login modal: press Enter to submit
+document.getElementById('loginPassword').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('loginUsername').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+
+/* ============================================================
+   SLACK PUSH NOTIFICATIONS
+   ============================================================ */
+let slackConfig = null;
+let slackThrottle = {};  // { key: lastNotifyTime } to prevent spam
+
+async function loadSlackConfig() {
+  if (!isConfigured || !currentUser) return;
+  try {
+    const { data } = await sb.rpc('get_slack_config', { p_token: currentUser.session_token });
+    slackConfig = data || {};
+  } catch(e) { console.warn('load slack config:', e); slackConfig = {}; }
+}
+
+function fillSlackForm() {
+  const c = slackConfig || {};
+  document.getElementById('slackUrl').value = c.webhook_url || '';
+  document.getElementById('slackVip').checked = c.notify_vip_checkin !== false;
+  document.getElementById('slackCapacity').checked = c.notify_capacity_warn !== false;
+  document.getElementById('slackOverflow').checked = c.notify_overflow === true;
+  document.getElementById('slackBroadcast').checked = c.notify_broadcast !== false;
+  document.getElementById('slackStatus').innerHTML = c.webhook_url
+    ? '<span style="color:var(--avail);">✓ Webhook 已設定</span>'
+    : '<span style="color:var(--muted);">尚未設定 · 儲存後才會推播</span>';
+}
+
+async function saveSlackSettings() {
+  if (!currentUser?.is_admin) { alert('需要管理員權限'); return; }
+  const config = {
+    webhook_url: document.getElementById('slackUrl').value.trim(),
+    notify_vip_checkin: document.getElementById('slackVip').checked,
+    notify_capacity_warn: document.getElementById('slackCapacity').checked,
+    notify_overflow: document.getElementById('slackOverflow').checked,
+    notify_broadcast: document.getElementById('slackBroadcast').checked,
+  };
+  const statusEl = document.getElementById('slackStatus');
+  try {
+    const { data, error } = await sb.rpc('set_slack_config', { p_token: currentUser.session_token, p_config: config });
+    if (error) throw error;
+    if (!data) throw new Error('儲存失敗');
+    slackConfig = config;
+    statusEl.innerHTML = '<span style="color:var(--avail);">✓ 已儲存</span>';
+    setTimeout(() => fillSlackForm(), 2000);
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:#C53E1D;">失敗：${e.message}</span>`;
+  }
+}
+
+async function testSlack() {
+  const url = document.getElementById('slackUrl').value.trim();
+  const statusEl = document.getElementById('slackStatus');
+  if (!url) { statusEl.innerHTML = '<span style="color:#C53E1D;">請先填入 Webhook URL</span>'; return; }
+  statusEl.innerHTML = '<span style="color:var(--muted);">傳送中...</span>';
+  const msg = buildSlackMessage('test', {
+    message: `這是來自 STARLUX Galactic Lounge 的推播測試訊息 ✈️\n如果你看到這則訊息，表示 Webhook 設定正確。`,
+    sender: currentUser?.display_name || 'System',
+  });
+  try {
+    await sendToSlack(url, msg);
+    statusEl.innerHTML = '<span style="color:var(--avail);">✓ 測試訊息已送出，請到 Slack 頻道查看</span>';
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:#C53E1D;">失敗：${e.message}（可能是 URL 錯或網路問題）</span>`;
+  }
+}
+
+async function sendToSlack(webhookUrl, message) {
+  // Use form-encoded to avoid CORS preflight (Slack accepts payload=<json>)
+  const res = await fetch(webhookUrl, {
+    method: 'POST',
+    body: 'payload=' + encodeURIComponent(JSON.stringify(message)),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+// 主要對外的推播函式
+async function notifySlack(type, payload) {
+  if (!slackConfig || !slackConfig.webhook_url) return;
+  // Check per-type opt-in
+  const enabledKeys = {
+    vip_checkin: 'notify_vip_checkin',
+    capacity_warn: 'notify_capacity_warn',
+    overflow: 'notify_overflow',
+    broadcast: 'notify_broadcast',
+  };
+  const key = enabledKeys[type];
+  if (key && slackConfig[key] === false) return;
+
+  // Throttle certain event types
+  const throttleMs = { capacity_warn: 30 * 60 * 1000 };
+  if (throttleMs[type]) {
+    const throttleKey = type + ':' + (payload.terminal || '');
+    const last = slackThrottle[throttleKey] || 0;
+    if (Date.now() - last < throttleMs[type]) return;
+    slackThrottle[throttleKey] = Date.now();
+  }
+
+  try {
+    const msg = buildSlackMessage(type, payload);
+    await sendToSlack(slackConfig.webhook_url, msg);
+  } catch(e) { console.warn('Slack notify failed:', e); }
+}
+
+function buildSlackMessage(type, p) {
+  const meta = {
+    vip_checkin: { emoji: '⭐', title: 'VIP 旅客抵達貴賓室' },
+    capacity_warn: { emoji: '⚠️', title: '貴賓室容量警示' },
+    overflow: { emoji: '📈', title: '預估容量溢流' },
+    broadcast: { emoji: '📢', title: '團隊廣播' },
+    test: { emoji: '✅', title: '推播測試訊息' },
+  }[type] || { emoji: '📩', title: '通知' };
+
+  return {
+    text: `${meta.emoji} *${meta.title}*`,
+    blocks: [
+      { type: 'header', text: { type: 'plain_text', text: `${meta.emoji} ${meta.title}`, emoji: true } },
+      { type: 'section', text: { type: 'mrkdwn', text: p.message || '' } },
+      { type: 'context', elements: [{
+        type: 'mrkdwn',
+        text: `_${new Date().toLocaleString('zh-TW', { hour12: false })} · ${p.sender || currentUser?.display_name || 'System'}_`
+      }]}
+    ]
+  };
+}
+
+// 從聊天頁面手動廣播
+async function broadcastToSlack() {
+  const inputEl = document.getElementById('chatInput');
+  const text = inputEl.value.trim();
+  if (!text) { alert('請先在聊天欄輸入訊息'); return; }
+  if (!slackConfig?.webhook_url) { alert('尚未設定 Slack Webhook（請請管理員在設定內填入）'); return; }
+  if (slackConfig.notify_broadcast === false) { alert('管理員已停用手動廣播'); return; }
+  try {
+    await notifySlack('broadcast', { message: text, sender: currentUser?.display_name });
+    inputEl.value = '';
+    alert('✓ 已廣播到 Slack');
+  } catch(e) { alert('廣播失敗：' + e.message); }
+}
+
 function updateClock() {
   const d = new Date(); const days = ['日','一','二','三','四','五','六'];
   document.getElementById('dateStr').textContent = `${d.getMonth()+1}/${d.getDate()} 星期${days[d.getDay()]}`;
@@ -1916,15 +2742,15 @@ function renderAll() { renderSeats(); renderStats(); renderQueue(); }
 setInterval(() => { renderSeats(); renderStats(); renderQueue(); }, 60000);
 setInterval(updateClock, 1000);
 
-// Live-update cfg status hint as user types
+// Live-update cfg status hint + profile dropdown as user types
 ['cfgUrl', 'cfgKey'].forEach(id => {
   const el = document.getElementById(id);
-  if (el) el.addEventListener('input', updateCfgStatus);
+  if (el) el.addEventListener('input', () => { updateCfgStatus(); renderProfileDropdown(); });
 });
 
-loadIdentity();
+bootstrapAuth();
 updateClock();
-initData();
+// initData is now called after successful login
 </script>
 </body>
 </html>
