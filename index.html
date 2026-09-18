@@ -598,8 +598,8 @@
 const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_URL';
 const SUPABASE_ANON_KEY = 'PASTE_YOUR_SUPABASE_ANON_KEY';
 const isConfigured = SUPABASE_URL && !SUPABASE_URL.includes('PASTE_') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('PASTE_');
-let supabase = null;
-if (isConfigured) supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let sb = null;
+if (isConfigured) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentUser = null;
 function loadIdentity() {
@@ -655,7 +655,7 @@ async function initData() {
 }
 
 async function loadSeats() {
-  const { data, error } = await supabase.from('seats').select('*').eq('terminal', currentTerminal);
+  const { data, error } = await sb.from('seats').select('*').eq('terminal', currentTerminal);
   if (error) throw error;
   seats = {}; Object.keys(zones).forEach(z => zones[z].codes = []);
   data.forEach(row => {
@@ -666,7 +666,7 @@ async function loadSeats() {
   renderAll();
 }
 async function loadFlights() {
-  const { data, error } = await supabase.from('flights').select('*');
+  const { data, error } = await sb.from('flights').select('*');
   if (error) throw error;
   flights = {};
   data.forEach(f => flights[f.flight_no] = f);
@@ -674,16 +674,16 @@ async function loadFlights() {
 
 let seatSub = null, flightSub = null;
 function subscribeRealtime() {
-  if (seatSub) supabase.removeChannel(seatSub);
-  seatSub = supabase.channel('rt-seats').on('postgres_changes', { event: '*', schema: 'public', table: 'seats' }, (payload) => {
+  if (seatSub) sb.removeChannel(seatSub);
+  seatSub = sb.channel('rt-seats').on('postgres_changes', { event: '*', schema: 'public', table: 'seats' }, (payload) => {
     const row = payload.new || payload.old;
     if (!row || row.terminal !== currentTerminal) return;
     if (payload.eventType === 'DELETE') delete seats[row.code];
     else seats[row.code] = row;
     renderAll();
   }).subscribe();
-  if (flightSub) supabase.removeChannel(flightSub);
-  flightSub = supabase.channel('rt-flights').on('postgres_changes', { event: '*', schema: 'public', table: 'flights' }, (payload) => {
+  if (flightSub) sb.removeChannel(flightSub);
+  flightSub = sb.channel('rt-flights').on('postgres_changes', { event: '*', schema: 'public', table: 'flights' }, (payload) => {
     const f = payload.new; if (f) flights[f.flight_no] = f;
   }).subscribe();
 }
@@ -713,7 +713,7 @@ function loadLocalFallback() {
 async function updateSeat(code, patch) {
   patch = { ...patch, updated_at: new Date().toISOString(), updated_by: currentUser?.name || 'anon' };
   if (isConfigured) {
-    const { error } = await supabase.from('seats').update(patch).eq('terminal', currentTerminal).eq('code', code);
+    const { error } = await sb.from('seats').update(patch).eq('terminal', currentTerminal).eq('code', code);
     if (error) alert('更新失敗：' + error.message);
   } else { Object.assign(seats[code], patch); renderAll(); }
 }
@@ -1041,7 +1041,7 @@ let channels = [], currentChannelId = null, messagesByChannel = {}, channelSub =
 async function initChat() {
   if (!isConfigured) { loadLocalChannels(); return; }
   try {
-    const { data } = await supabase.from('channels').select('*').order('sort_order');
+    const { data } = await sb.from('channels').select('*').order('sort_order');
     channels = data || []; renderChannelList();
     if (channels.length) selectChannel(channels[0].id);
     subChatMessages();
@@ -1065,14 +1065,14 @@ async function selectChannel(cid) {
   document.getElementById('chatHeaderAvatar').style.background = ch.color || 'var(--navy-700)';
   document.getElementById('chatHeaderStatus').textContent = isConfigured?'Realtime':'本機';
   if (isConfigured) {
-    const { data } = await supabase.from('messages').select('*').eq('channel_id', cid).order('created_at').limit(100);
+    const { data } = await sb.from('messages').select('*').eq('channel_id', cid).order('created_at').limit(100);
     if (data) messagesByChannel[cid] = data;
   }
   renderMessages();
 }
 function subChatMessages() {
-  if (channelSub) supabase.removeChannel(channelSub);
-  channelSub = supabase.channel('rt-messages').on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, (payload) => {
+  if (channelSub) sb.removeChannel(channelSub);
+  channelSub = sb.channel('rt-messages').on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, (payload) => {
     const m = payload.new;
     if (!messagesByChannel[m.channel_id]) messagesByChannel[m.channel_id] = [];
     messagesByChannel[m.channel_id].push(m);
@@ -1100,7 +1100,7 @@ async function sendMsg() {
   const inp = document.getElementById('chatInput');
   const text = inp.value.trim(); if (!text || !currentChannelId || !currentUser) return;
   inp.value = '';
-  if (isConfigured) await supabase.from('messages').insert({ channel_id: currentChannelId, sender_name: currentUser.name, sender_role: currentUser.role, content: text });
+  if (isConfigured) await sb.from('messages').insert({ channel_id: currentChannelId, sender_name: currentUser.name, sender_role: currentUser.role, content: text });
   else { if (!messagesByChannel[currentChannelId]) messagesByChannel[currentChannelId] = []; messagesByChannel[currentChannelId].push({ sender_name: currentUser.name, sender_role: currentUser.role, content: text, created_at: new Date().toISOString() }); renderMessages(); }
 }
 document.getElementById('chatSend').addEventListener('click', sendMsg);
